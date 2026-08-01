@@ -189,10 +189,10 @@ func (ps *ProxyServer) executeRequestWithRetry(
 
 	var client *http.Client
 	if isStream {
-		client = channelHandler.GetStreamClient()
+		client = channelHandler.GetStreamClientForKey(apiKey)
 		req.Header.Set("X-Accel-Buffering", "no")
 	} else {
-		client = channelHandler.GetHTTPClient()
+		client = channelHandler.GetHTTPClientForKey(apiKey)
 	}
 
 	resp, err := client.Do(req)

@@ -32,6 +32,7 @@ import { h, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import KeyCreateDialog from "./KeyCreateDialog.vue";
 import KeyDeleteDialog from "./KeyDeleteDialog.vue";
+import ProxyRebalanceDialog from "./ProxyRebalanceDialog.vue";
 
 const { t } = useI18n();
 
@@ -92,6 +93,7 @@ const isRestoring = ref(false);
 
 const createDialogShow = ref(false);
 const deleteDialogShow = ref(false);
+const rebalanceDialogShow = ref(false);
 
 // 备注编辑相关
 const notesDialogShow = ref(false);
@@ -618,6 +620,10 @@ function resetPage() {
   searchText.value = "";
   statusFilter.value = "all";
 }
+
+async function handleRebalanceSuccess() {
+  await loadKeys();
+}
 </script>
 
 <template>
@@ -630,6 +636,14 @@ function resetPage() {
             <n-icon :component="AddCircleOutline" />
           </template>
           {{ t("keys.addKey") }}
+        </n-button>
+        <n-button
+          v-if="selectedGroup?.id && selectedGroup.group_type !== 'aggregate'"
+          size="small"
+          tertiary
+          @click="rebalanceDialogShow = true"
+        >
+          {{ t("proxyPool.assignEvenly") }}
         </n-button>
         <n-button type="error" size="small" @click="deleteDialogShow = true">
           <template #icon>
@@ -708,6 +722,13 @@ function resetPage() {
                     <n-icon :component="AlertCircleOutline" />
                   </template>
                   {{ t("keys.invalidShort") }}
+                </n-tag>
+                <n-tag size="small" :bordered="false" type="info">
+                  {{
+                    key.proxy_id
+                      ? t("proxyPool.keyDedicatedProxy", { id: key.proxy_id })
+                      : t("proxyPool.keyInheritedProxy")
+                  }}
                 </n-tag>
                 <n-input class="key-text" :value="getDisplayValue(key)" readonly size="small" />
                 <div class="quick-actions">
@@ -841,6 +862,14 @@ function resetPage() {
       :group-id="selectedGroup.id"
       :group-name="getGroupDisplayName(selectedGroup!)"
       @success="handleBatchDeleteSuccess"
+    />
+
+    <proxy-rebalance-dialog
+      v-if="selectedGroup?.id"
+      v-model:show="rebalanceDialogShow"
+      :group-id="selectedGroup.id"
+      :group-name="getGroupDisplayName(selectedGroup!)"
+      @success="handleRebalanceSuccess"
     />
   </div>
 

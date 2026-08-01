@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gpt-load/internal/httpclient"
 	"gpt-load/internal/models"
 	"gpt-load/internal/types"
 	"gpt-load/internal/utils"
@@ -33,6 +34,12 @@ type BaseChannel struct {
 	TestModel          string
 	ValidationEndpoint string
 	upstreamLock       sync.Mutex
+
+	// Client configs are retained so a selected Key can override only its proxy
+	// while preserving all group-level timeout, TLS and connection-pool settings.
+	clientManager *httpclient.HTTPClientManager
+	clientConfig  httpclient.Config
+	streamConfig  httpclient.Config
 
 	// Cached fields from the group for stale check
 	channelType         string
@@ -129,6 +136,27 @@ func (b *BaseChannel) GetHTTPClient() *http.Client {
 // GetStreamClient returns the client for streaming requests.
 func (b *BaseChannel) GetStreamClient() *http.Client {
 	return b.StreamClient
+}
+
+// GetHTTPClientForKey returns the standard client for a selected key. A non-empty
+// dedicated proxy URL takes precedence over the group-level proxy configuration.
+func (b *BaseChannel) GetHTTPClientForKey(apiKey *models.APIKey) *http.Client {
+	return b.getClientForKey(b.clientConfig, b.HTTPClient, apiKey)
+}
+
+// GetStreamClientForKey returns the streaming client for a selected key.
+func (b *BaseChannel) GetStreamClientForKey(apiKey *models.APIKey) *http.Client {
+	return b.getClientForKey(b.streamConfig, b.StreamClient, apiKey)
+}
+
+func (b *BaseChannel) getClientForKey(config httpclient.Config, fallback *http.Client, apiKey *models.APIKey) *http.Client {
+	if b.clientManager == nil {
+		return fallback
+	}
+	if apiKey != nil && apiKey.ProxyURL != "" {
+		config.ProxyURL = apiKey.ProxyURL
+	}
+	return b.clientManager.GetClient(&config)
 }
 
 // ApplyModelRedirect applies model redirection based on the group's redirect rules.

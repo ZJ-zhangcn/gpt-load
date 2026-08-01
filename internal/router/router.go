@@ -144,6 +144,15 @@ func registerProtectedAPIRoutes(api *gin.RouterGroup, serverHandler *handler.Ser
 		keys.PUT("/:id/notes", serverHandler.UpdateKeyNotes)
 	}
 
+	// Proxy Pool Management Routes
+	proxies := api.Group("/proxies")
+	{
+		proxies.GET("", serverHandler.ListProxies)
+		proxies.POST("/import", serverHandler.ImportProxies)
+		proxies.POST("/rebalance", serverHandler.RebalanceProxies)
+		proxies.DELETE("/:id", serverHandler.DeleteProxy)
+	}
+
 	// Tasks
 	api.GET("/tasks/status", serverHandler.GetTaskStatus)
 

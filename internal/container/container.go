@@ -88,6 +88,9 @@ func BuildContainer() (*dig.Container, error) {
 	if err := container.Provide(keypool.NewProvider); err != nil {
 		return nil, err
 	}
+	if err := container.Provide(services.NewProxyPoolService); err != nil {
+		return nil, err
+	}
 	if err := container.Provide(keypool.NewKeyValidator); err != nil {
 		return nil, err
 	}

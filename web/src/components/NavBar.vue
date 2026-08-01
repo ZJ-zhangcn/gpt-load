@@ -20,6 +20,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     renderMenuItem("dashboard", t("nav.dashboard"), "📊"),
     renderMenuItem("keys", t("nav.keys"), "🔑"),
     renderMenuItem("logs", t("nav.logs"), "📋"),
+    renderMenuItem("proxy-pool", t("nav.proxyPool"), ""),
     renderMenuItem("settings", t("nav.settings"), "⚙️"),
   ];
 
@@ -36,6 +37,11 @@ watch(activeMenu, () => {
 });
 
 function renderMenuItem(key: string, label: string, icon: string): MenuOption {
+  const children = [h("span", { class: "nav-item-text" }, label)];
+  if (icon) {
+    children.unshift(h("span", { class: "nav-item-icon" }, icon));
+  }
+
   return {
     label: () =>
       h(
@@ -47,10 +53,7 @@ function renderMenuItem(key: string, label: string, icon: string): MenuOption {
           class: "nav-menu-item",
         },
         {
-          default: () => [
-            h("span", { class: "nav-item-icon" }, icon),
-            h("span", { class: "nav-item-text" }, label),
-          ],
+          default: () => children,
         }
       ),
     key,

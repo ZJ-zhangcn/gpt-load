@@ -26,6 +26,7 @@ export interface APIKey {
   last_used_at?: string;
   created_at: string;
   updated_at: string;
+  proxy_id?: number | null;
 }
 
 export interface UpstreamInfo {
@@ -132,6 +133,26 @@ export interface KeyImportResult {
 export interface KeyDeleteResult {
   deleted_count: number;
   ignored_count: number;
+}
+
+export interface ProxyNode {
+  id: number;
+  url: string;
+  created_at: string;
+}
+
+export interface ProxyImportResult {
+  added_count: number;
+  ignored_count: number;
+}
+
+export interface ProxyRebalanceResult {
+  bound_key_count: number;
+  proxy_key_count: Record<number, number>;
+}
+
+export interface ProxyDeleteResult {
+  unbound_key_count: number;
 }
 
 export interface TaskInfo {

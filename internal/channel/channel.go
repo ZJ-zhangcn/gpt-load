@@ -23,6 +23,13 @@ type ChannelProxy interface {
 	// GetStreamClient returns the client for streaming requests.
 	GetStreamClient() *http.Client
 
+	// GetHTTPClientForKey returns a client using the selected key's dedicated
+	// proxy when present, otherwise the original group/environment fallback.
+	GetHTTPClientForKey(apiKey *models.APIKey) *http.Client
+
+	// GetStreamClientForKey is the streaming equivalent of GetHTTPClientForKey.
+	GetStreamClientForKey(apiKey *models.APIKey) *http.Client
+
 	// ModifyRequest allows the channel to add specific headers or modify the request
 	ModifyRequest(req *http.Request, apiKey *models.APIKey, group *models.Group)
 

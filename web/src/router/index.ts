@@ -23,6 +23,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import("@/views/Logs.vue"),
       },
       {
+        path: "proxy-pool",
+        name: "proxy-pool",
+        component: () => import("@/views/ProxyPool.vue"),
+      },
+      {
         path: "settings",
         name: "settings",
         component: () => import("@/views/Settings.vue"),

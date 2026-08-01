@@ -73,6 +73,7 @@ export default {
     dashboard: "ダッシュボード",
     keys: "キー管理",
     logs: "ログ",
+    proxyPool: "プロキシプール",
     settings: "システム設定",
     logout: "ログアウト",
   },
@@ -633,5 +634,33 @@ export default {
         solution2Step3: "サービスを再起動",
       },
     },
+  },
+  proxyPool: {
+    eyebrow: "送信設定",
+    title: "プロキシプール",
+    description:
+      "再利用可能なノードを取り込み、キーグループで選択して均等に割り当てます。ノードを削除すると専用バインドもクリアされます。",
+    importTitle: "ノードを一括インポート",
+    importHint:
+      "HTTP / HTTPS / SOCKS5 を1行ずつ入力できます。カンマとセミコロンにも対応しています。",
+    importPlaceholder: "http://user:pass@host:port\nsocks5://host:port",
+    importSuccess: "{added} 個をインポート、{ignored} 件を無視しました",
+    nodesTitle: "インポート済みノード",
+    nodesCount: "{count} 個のノード",
+    ready: "設定済み",
+    empty: "プロキシノードはまだありません。上でインポートしてください。",
+    loadFailed: "プロキシノードの読み込みに失敗しました。再試行してください。",
+    deleteConfirm:
+      "削除すると、このノードに紐づくすべてのキーの専用プロキシがクリアされ、グループまたは環境のプロキシへフォールバックします。削除しますか？",
+    deleteSuccess: "ノードを削除し、{count} 個のキーの専用プロキシをクリアしました",
+    rebalanceTitle: "プロキシを均等に割り当て",
+    rebalanceDescription:
+      "選択したノードをグループ {group} のすべてのキーへ安定した順序で均等に割り当てます。",
+    emptyForRebalance: "プロキシプールが空です。先にノードをインポートしてください。",
+    selectedNodes: "{count} 個選択済み",
+    assignEvenly: "均等に割り当て",
+    rebalanceSuccess: "{count} 個のキーの専用プロキシを更新しました",
+    keyDedicatedProxy: "専用プロキシ #{id}",
+    keyInheritedProxy: "グループプロキシを継承",
   },
 };

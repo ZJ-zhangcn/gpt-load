@@ -34,6 +34,49 @@ func NewProvider(db *gorm.DB, store store.Store, settingsManager *config.SystemS
 	}
 }
 
+// RefreshProxyURLs writes only the derived proxy URL field for keys already present
+// in the runtime store. Proxy URLs are stored encrypted, just like API keys.
+func (p *KeyProvider) RefreshProxyURLs(proxyURLs map[uint]string) error {
+	for keyID, encryptedProxyURL := range proxyURLs {
+		keyHashKey := fmt.Sprintf("key:%d", keyID)
+		keyDetails, err := p.store.HGetAll(keyHashKey)
+		if err != nil {
+			return fmt.Errorf("failed to inspect cache for key %d: %w", keyID, err)
+		}
+		if len(keyDetails) == 0 {
+			continue
+		}
+		if err := p.store.HSet(keyHashKey, map[string]any{"proxy_url": encryptedProxyURL}); err != nil {
+			return fmt.Errorf("failed to refresh proxy URL for key %d: %w", keyID, err)
+		}
+	}
+	return nil
+}
+
+// hydrateProxyURL resolves a stored encrypted proxy URL for validation paths that
+// begin with a database-loaded key rather than SelectKey.
+func (p *KeyProvider) hydrateProxyURL(apiKey *models.APIKey) {
+	if apiKey == nil {
+		return
+	}
+	apiKey.ProxyURL = ""
+	keyDetails, err := p.store.HGetAll(fmt.Sprintf("key:%d", apiKey.ID))
+	if err != nil {
+		logrus.WithError(err).WithField("keyID", apiKey.ID).Warn("Failed to resolve key-specific proxy URL")
+		return
+	}
+	encryptedProxyURL := keyDetails["proxy_url"]
+	if encryptedProxyURL == "" {
+		return
+	}
+	decryptedProxyURL, err := p.encryptionSvc.Decrypt(encryptedProxyURL)
+	if err != nil {
+		logrus.WithError(err).WithField("keyID", apiKey.ID).Warn("Failed to decrypt key-specific proxy URL")
+		return
+	}
+	apiKey.ProxyURL = decryptedProxyURL
+}
+
 // SelectKey 为指定的分组原子性地选择并轮换一个可用的 APIKey。
 func (p *KeyProvider) SelectKey(groupID uint) (*models.APIKey, error) {
 	activeKeysListKey := fmt.Sprintf("group:%d:active_keys", groupID)
@@ -75,9 +118,25 @@ func (p *KeyProvider) SelectKey(groupID uint) (*models.APIKey, error) {
 		decryptedKeyValue = encryptedKeyValue
 	}
 
+	// Decrypt the optional per-key proxy URL. A decryption failure falls back to
+	// the original group/environment proxy path rather than sending a malformed URL.
+	proxyURL := ""
+	if encryptedProxyURL := keyDetails["proxy_url"]; encryptedProxyURL != "" {
+		decryptedProxyURL, decryptErr := p.encryptionSvc.Decrypt(encryptedProxyURL)
+		if decryptErr != nil {
+			logrus.WithFields(logrus.Fields{
+				"keyID": keyID,
+				"error": decryptErr,
+			}).Warn("Failed to decrypt key-specific proxy URL; falling back to group proxy")
+		} else {
+			proxyURL = decryptedProxyURL
+		}
+	}
+
 	apiKey := &models.APIKey{
 		ID:           uint(keyID),
 		KeyValue:     decryptedKeyValue,
+		ProxyURL:     proxyURL,
 		Status:       keyDetails["status"],
 		FailureCount: failureCount,
 		GroupID:      groupID,
@@ -245,7 +304,7 @@ func (p *KeyProvider) LoadKeysFromDB() error {
 	batchSize := 10000
 	var batchKeys []*models.APIKey
 
-	err := p.db.Model(&models.APIKey{}).FindInBatches(&batchKeys, batchSize, func(tx *gorm.DB, batch int) error {
+	err := p.db.Preload("Proxy").Model(&models.APIKey{}).FindInBatches(&batchKeys, batchSize, func(tx *gorm.DB, batch int) error {
 		logrus.Debugf("Processing batch %d with %d keys...", batch, len(batchKeys))
 
 		var pipeline store.Pipeliner
@@ -630,14 +689,19 @@ func (p *KeyProvider) removeKeyFromStore(keyID, groupID uint) error {
 
 // apiKeyToMap converts an APIKey model to a map for HSET.
 func (p *KeyProvider) apiKeyToMap(key *models.APIKey) map[string]any {
-	return map[string]any{
+	values := map[string]any{
 		"id":            fmt.Sprint(key.ID),
 		"key_string":    key.KeyValue,
 		"status":        key.Status,
 		"failure_count": key.FailureCount,
 		"group_id":      key.GroupID,
 		"created_at":    key.CreatedAt.Unix(),
+		"proxy_url":     "",
 	}
+	if key.Proxy != nil {
+		values["proxy_url"] = key.Proxy.URL
+	}
+	return values
 }
 
 // pluckIDs extracts IDs from a slice of APIKey.

@@ -63,6 +63,7 @@ func (s *KeyValidator) ValidateSingleKey(key *models.APIKey, group *models.Group
 		return false, fmt.Errorf("failed to get channel for group %s: %w", group.Name, err)
 	}
 
+	s.keypoolProvider.hydrateProxyURL(key)
 	isValid, validationErr := ch.ValidateKey(ctx, key, group)
 
 	var errorMsg string
