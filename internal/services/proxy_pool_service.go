@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"gpt-load/internal/encryption"
 	"gpt-load/internal/keypool"
@@ -23,6 +24,8 @@ type ProxyPoolService struct {
 	db            *gorm.DB
 	keyProvider   *keypool.KeyProvider
 	encryptionSvc encryption.Service
+	probeTarget   string
+	probeTimeout  time.Duration
 }
 
 // ProxyImportResult describes a batch proxy import without exposing credentials in logs.
@@ -44,9 +47,14 @@ type ProxyDeleteResult struct {
 
 // ProxyNodeView is the administrator-facing proxy-node representation.
 type ProxyNodeView struct {
-	ID        uint   `json:"id"`
-	URL       string `json:"url"`
-	CreatedAt string `json:"created_at"`
+	ID              uint    `json:"id"`
+	URL             string  `json:"url"`
+	CreatedAt       string  `json:"created_at"`
+	CheckStatus     string  `json:"check_status"`
+	CheckHTTPStatus int     `json:"check_http_status"`
+	CheckLatencyMS  int64   `json:"check_latency_ms"`
+	CheckError      string  `json:"check_error"`
+	CheckedAt       *string `json:"checked_at,omitempty"`
 }
 
 func NewProxyPoolService(db *gorm.DB, keyProvider *keypool.KeyProvider, encryptionSvc encryption.Service) *ProxyPoolService {
@@ -54,6 +62,8 @@ func NewProxyPoolService(db *gorm.DB, keyProvider *keypool.KeyProvider, encrypti
 		db:            db,
 		keyProvider:   keyProvider,
 		encryptionSvc: encryptionSvc,
+		probeTarget:   proxyProbeTarget,
+		probeTimeout:  proxyProbeTimeout,
 	}
 }
 
@@ -137,11 +147,7 @@ func (s *ProxyPoolService) List() ([]ProxyNodeView, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decrypt proxy node %d: %w", node.ID, err)
 		}
-		views = append(views, ProxyNodeView{
-			ID:        node.ID,
-			URL:       proxyURL,
-			CreatedAt: node.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		})
+		views = append(views, proxyNodeView(node, proxyURL))
 	}
 	return views, nil
 }

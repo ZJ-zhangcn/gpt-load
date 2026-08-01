@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"strconv"
 
 	app_errors "gpt-load/internal/errors"
@@ -18,6 +19,10 @@ type proxyRebalanceRequest struct {
 	ProxyIDs []uint `json:"proxy_ids" binding:"required,min=1"`
 }
 
+type proxyCheckRequest struct {
+	ProxyIDs []uint `json:"proxy_ids"`
+}
+
 // ListProxies returns the current proxy node pool for the authenticated management UI.
 func (s *Server) ListProxies(c *gin.Context) {
 	proxies, err := s.ProxyPoolService.List()
@@ -26,6 +31,22 @@ func (s *Server) ListProxies(c *gin.Context) {
 		return
 	}
 	response.Success(c, proxies)
+}
+
+// CheckProxies performs a real outbound probe through the selected nodes. An
+// empty proxy_ids list checks the complete pool.
+func (s *Server) CheckProxies(c *gin.Context) {
+	var req proxyCheckRequest
+	if err := c.ShouldBindJSON(&req); err != nil && err != io.EOF {
+		response.Error(c, app_errors.ErrInvalidJSON)
+		return
+	}
+	result, err := s.ProxyPoolService.Check(c.Request.Context(), req.ProxyIDs)
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrBadRequest, err.Error()))
+		return
+	}
+	response.Success(c, result)
 }
 
 // ImportProxies accepts a newline/comma/semicolon-separated node list.

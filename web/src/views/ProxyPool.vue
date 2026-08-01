@@ -7,6 +7,7 @@ import {
   DownloadOutline,
   FilterOutline,
   LayersOutline,
+  PulseOutline,
   RefreshOutline,
   SearchOutline,
   ServerOutline,
@@ -14,7 +15,7 @@ import {
   TrashOutline,
 } from "@vicons/ionicons5";
 import { proxiesApi } from "@/api/proxies";
-import type { ProxyNode } from "@/types/models";
+import type { ProxyCheckStatus, ProxyNode } from "@/types/models";
 import {
   NButton,
   NCard,
@@ -34,6 +35,8 @@ const proxies = ref<ProxyNode[]>([]);
 const proxiesText = ref("");
 const loading = ref(false);
 const importing = ref(false);
+const checking = ref(false);
+const checkingIds = ref(new Set<number>());
 const deletingId = ref<number | null>(null);
 const loadFailed = ref(false);
 const searchText = ref("");
@@ -100,6 +103,24 @@ const latestImportLabel = computed(() => {
   return formatCreatedAt(latest.created_at, true);
 });
 
+const checkSummary = computed(() => {
+  const checked = proxies.value.filter(proxy => proxy.check_status !== "unchecked").length;
+  const healthy = proxies.value.filter(proxy => proxy.check_status === "up").length;
+  const unhealthy = proxies.value.filter(proxy => proxy.check_status === "down").length;
+  return { checked, healthy, unhealthy };
+});
+
+const checkOverallState = computed(() => {
+  if (checkSummary.value.checked === 0) {
+    return "pending";
+  }
+  return checkSummary.value.unhealthy > 0 ? "degraded" : "active";
+});
+
+function checkStatusLabel(status: ProxyCheckStatus) {
+  return t(`proxyPool.checkStatus.${status}`);
+}
+
 const overviewStats = computed(() => [
   {
     key: "total",
@@ -147,12 +168,10 @@ const filteredProxies = computed(() => {
     const matchesProtocol =
       protocolFilter.value === "all" || parsed.protocol === protocolFilter.value;
 
-    // The current API only exposes imported nodes. Keep the tab semantics explicit until
-    // health probing is available instead of presenting invented availability results.
     const matchesMode =
       filterMode.value === "all" ||
       filterMode.value === "imported" ||
-      filterMode.value === "pending";
+      (filterMode.value === "pending" && proxy.check_status === "unchecked");
     return matchesSearch && matchesProtocol && matchesMode;
   });
 });
@@ -198,6 +217,61 @@ async function loadProxies() {
   } finally {
     loading.value = false;
   }
+}
+
+async function checkAll() {
+  if (checking.value || proxies.value.length === 0) {
+    return;
+  }
+
+  checking.value = true;
+  try {
+    const result = await proxiesApi.check();
+    mergeCheckedNodes(result.nodes);
+    window.$message.success(
+      t("proxyPool.checkSuccess", {
+        checked: result.checked_count,
+        healthy: result.healthy_count,
+        unhealthy: result.unhealthy_count,
+      })
+    );
+  } catch (_error) {
+    window.$message.error(t("proxyPool.checkFailed"));
+  } finally {
+    checking.value = false;
+  }
+}
+
+async function checkProxy(proxy: ProxyNode) {
+  if (checking.value || checkingIds.value.has(proxy.id)) {
+    return;
+  }
+
+  const next = new Set(checkingIds.value);
+  next.add(proxy.id);
+  checkingIds.value = next;
+  try {
+    const result = await proxiesApi.check([proxy.id]);
+    mergeCheckedNodes(result.nodes);
+    window.$message.success(
+      t("proxyPool.checkSuccess", {
+        checked: result.checked_count,
+        healthy: result.healthy_count,
+        unhealthy: result.unhealthy_count,
+      })
+    );
+  } catch (_error) {
+    window.$message.error(t("proxyPool.checkFailed"));
+  } finally {
+    const remaining = new Set(checkingIds.value);
+    remaining.delete(proxy.id);
+    checkingIds.value = remaining;
+  }
+}
+
+function mergeCheckedNodes(nodes: ProxyNode[]) {
+  const checkedById = new Map(nodes.map(node => [node.id, node]));
+  proxies.value = proxies.value.map(node => checkedById.get(node.id) ?? node);
 }
 
 async function importProxies() {
@@ -278,8 +352,13 @@ onMounted(() => {
     <header class="page-header">
       <div class="page-heading">
         <div class="page-title-group">
-          <span class="proxy-page-logo" aria-hidden="true">
-            <n-icon :size="24"><layers-outline /></n-icon>
+          <span class="proxy-page-logo" role="img" :aria-label="t('proxyPool.logoLabel')">
+            <span class="proxy-logo-mark" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span class="proxy-logo-word">{{ t("proxyPool.logoWordmark") }}</span>
           </span>
           <div class="page-heading-copy">
             <p class="eyebrow">{{ t("proxyPool.eyebrow") }}</p>
@@ -448,9 +527,15 @@ onMounted(() => {
                         <span class="muted-cell">{{ row.createdLabel }}</span>
                       </td>
                       <td>
-                        <span class="status-cell pending">
+                        <span class="status-cell" :class="row.check_status">
                           <i class="status-dot" />
-                          {{ t("proxyPool.pendingCheck") }}
+                          <span>{{ checkStatusLabel(row.check_status) }}</span>
+                          <small v-if="row.check_status === 'up'">
+                            {{ row.check_latency_ms }} ms
+                          </small>
+                          <small v-else-if="row.check_status === 'down'">
+                            {{ row.check_http_status || row.check_error }}
+                          </small>
                         </span>
                       </td>
                       <td>
@@ -460,6 +545,20 @@ onMounted(() => {
                         </span>
                       </td>
                       <td class="actions-column">
+                        <n-button
+                          circle
+                          quaternary
+                          type="primary"
+                          :disabled="checking"
+                          :loading="checkingIds.has(row.id)"
+                          :aria-label="t('proxyPool.checkNode')"
+                          :title="t('proxyPool.checkNode')"
+                          @click="checkProxy(row)"
+                        >
+                          <template #icon>
+                            <n-icon><pulse-outline /></n-icon>
+                          </template>
+                        </n-button>
                         <n-popconfirm
                           :positive-text="t('common.delete')"
                           :negative-text="t('common.cancel')"
@@ -551,22 +650,46 @@ onMounted(() => {
             <div>
               <div class="heading-line">
                 <h3>{{ t("proxyPool.healthTitle") }}</h3>
-                <span class="health-state-dot" />
+                <span class="health-state-dot" :class="checkOverallState" />
               </div>
-              <p>{{ t("proxyPool.healthUnavailable") }}</p>
+              <p>{{ t("proxyPool.healthHint") }}</p>
             </div>
-            <n-icon class="health-icon"><time-outline /></n-icon>
+            <n-button
+              size="small"
+              type="primary"
+              :loading="checking"
+              :disabled="proxies.length === 0"
+              @click="checkAll"
+            >
+              <template #icon>
+                <n-icon><pulse-outline /></n-icon>
+              </template>
+              {{ t("proxyPool.checkAll") }}
+            </n-button>
           </div>
-          <div class="health-placeholder">
-            <div class="health-placeholder-icon">
-              <n-icon :size="22"><time-outline /></n-icon>
+          <div class="health-summary">
+            <div class="health-summary-main">
+              <strong>{{ checkSummary.checked }} / {{ proxies.length }}</strong>
+              <span>{{ t("proxyPool.checkedNodes") }}</span>
             </div>
-            <strong>{{ t("proxyPool.healthLink") }}</strong>
-            <p>{{ t("proxyPool.healthHint") }}</p>
+            <div class="health-summary-stats">
+              <span class="health-summary-stat up">
+                <i class="status-dot" />
+                {{ checkSummary.healthy }} {{ t("proxyPool.healthyNodes") }}
+              </span>
+              <span class="health-summary-stat down">
+                <i class="status-dot" />
+                {{ checkSummary.unhealthy }} {{ t("proxyPool.unhealthyNodes") }}
+              </span>
+            </div>
+            <p class="health-target">
+              <n-icon><pulse-outline /></n-icon>
+              {{ t("proxyPool.checkTarget") }}
+            </p>
           </div>
           <div class="health-footnote">
             <n-icon><checkmark-circle-outline /></n-icon>
-            <span>{{ t("proxyPool.healthBoundHint") }}</span>
+            <span>{{ t("proxyPool.checkPersisted") }}</span>
           </div>
         </n-card>
       </aside>
@@ -618,16 +741,48 @@ onMounted(() => {
 .proxy-page-logo {
   align-items: center;
   background: var(--primary-gradient);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
   color: #fff;
   display: inline-flex;
   flex: 0 0 auto;
-  height: 48px;
+  gap: 8px;
+  height: 52px;
   justify-content: center;
   margin-top: 2px;
-  width: 48px;
+  padding: 0 12px 0 10px;
+}
+
+.proxy-logo-mark {
+  display: grid;
+  gap: 3px;
+  width: 22px;
+}
+
+.proxy-logo-mark i {
+  background: currentColor;
+  border-radius: 2px;
+  display: block;
+  height: 4px;
+  transform: skewX(-22deg);
+}
+
+.proxy-logo-mark i:nth-child(2) {
+  opacity: 0.78;
+  transform: translateX(3px) skewX(-22deg);
+}
+
+.proxy-logo-mark i:nth-child(3) {
+  opacity: 0.58;
+  transform: translateX(6px) skewX(-22deg);
+}
+
+.proxy-logo-word {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
 }
 
 .page-heading h2,
@@ -1053,14 +1208,41 @@ onMounted(() => {
   width: 7px;
 }
 
-.status-cell.pending {
+.status-cell.unchecked {
   color: #c27803;
 }
 
-.status-cell.pending .status-dot,
+.status-cell.unchecked .status-dot,
 .health-state-dot {
   background: #f0a020;
   box-shadow: 0 0 0 3px rgba(240, 160, 32, 0.14);
+}
+
+.status-cell.up {
+  color: var(--success-color);
+}
+
+.status-cell.up .status-dot,
+.health-state-dot.active,
+.health-summary-stat.up .status-dot {
+  background: var(--success-color);
+  box-shadow: 0 0 0 3px rgba(24, 160, 88, 0.14);
+}
+
+.status-cell.down {
+  color: var(--error-color);
+}
+
+.status-cell.down .status-dot,
+.health-state-dot.degraded,
+.health-summary-stat.down .status-dot {
+  background: var(--error-color);
+  box-shadow: 0 0 0 3px rgba(208, 48, 80, 0.14);
+}
+
+.status-cell small {
+  color: var(--text-color-3, var(--text-tertiary));
+  font-size: 10px;
 }
 
 .binding-cell {
@@ -1070,7 +1252,7 @@ onMounted(() => {
 
 .actions-column {
   text-align: right !important;
-  width: 52px;
+  width: 92px;
 }
 
 .proxy-side-column {
@@ -1105,6 +1287,68 @@ onMounted(() => {
 .health-queue-panel :deep(.n-card__content) {
   align-content: space-between;
   min-height: 100%;
+}
+
+.health-summary {
+  background: var(--primary-color-suppl);
+  border: 1px solid rgba(102, 126, 234, 0.14);
+  border-radius: var(--border-radius-md);
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+}
+
+.health-summary-main {
+  align-items: baseline;
+  display: flex;
+  gap: 9px;
+}
+
+.health-summary-main strong {
+  color: var(--text-color-1, var(--text-primary));
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.health-summary-main span,
+.health-summary-stat,
+.health-target {
+  color: var(--text-color-3, var(--text-tertiary));
+  font-size: 11px;
+}
+
+.health-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.health-summary-stat {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.health-summary-stat.up {
+  color: var(--success-color);
+}
+
+.health-summary-stat.down {
+  color: var(--error-color);
+}
+
+.health-target {
+  align-items: flex-start;
+  display: flex;
+  gap: 7px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.health-target .n-icon {
+  color: var(--primary-color);
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .side-card-heading {

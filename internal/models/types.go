@@ -115,11 +115,16 @@ type Group struct {
 // ProxyNode 对应可复用的出站代理节点。URL 使用 EncryptionSvc 加密存储，
 // URLHash 允许在不暴露明文的前提下稳定去重。
 type ProxyNode struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	URL       string    `gorm:"type:text;not null" json:"url"`
-	URLHash   string    `gorm:"type:varchar(128);not null;uniqueIndex" json:"-"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	URL             string     `gorm:"type:text;not null" json:"url"`
+	URLHash         string     `gorm:"type:varchar(128);not null;uniqueIndex" json:"-"`
+	CheckStatus     string     `gorm:"type:varchar(20);not null;default:'unchecked';index" json:"check_status"`
+	CheckHTTPStatus int        `gorm:"not null;default:0" json:"check_http_status"`
+	CheckLatencyMS  int64      `gorm:"not null;default:0" json:"check_latency_ms"`
+	CheckError      string     `gorm:"type:varchar(64);not null;default:''" json:"check_error"`
+	CheckedAt       *time.Time `gorm:"index" json:"checked_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // APIKey 对应 api_keys 表

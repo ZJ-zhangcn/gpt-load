@@ -1,4 +1,5 @@
 import type {
+  ProxyCheckResult,
   ProxyDeleteResult,
   ProxyImportResult,
   ProxyNode,
@@ -14,6 +15,11 @@ export const proxiesApi = {
 
   async import(proxiesText: string): Promise<ProxyImportResult> {
     const res = await http.post("/proxies/import", { proxies_text: proxiesText });
+    return res.data;
+  },
+
+  async check(proxyIds: number[] = []): Promise<ProxyCheckResult> {
+    const res = await http.post("/proxies/check", { proxy_ids: proxyIds });
     return res.data;
   },
 

@@ -131,6 +131,32 @@ func TestProxyPoolHandlersRejectInvalidImport(t *testing.T) {
 	}
 }
 
+func TestProxyPoolHandlersCheckEmptyPool(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	server, _ := newProxyPoolHandlerTestServer(t)
+	router := gin.New()
+	router.POST("/api/proxies/check", server.CheckProxies)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/proxies/check", bytes.NewBufferString(`{}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("check status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var payload struct {
+		Data struct {
+			CheckedCount int `json:"checked_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode check response: %v", err)
+	}
+	if payload.Data.CheckedCount != 0 {
+		t.Fatalf("checked count = %d, want 0", payload.Data.CheckedCount)
+	}
+}
+
 func jsonNumber(v uint) string {
 	return strconv.FormatUint(uint64(v), 10)
 }

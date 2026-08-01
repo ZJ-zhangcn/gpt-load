@@ -85,3 +85,20 @@ test("keeps the right-side operations as one continuous aligned stack", () => {
     /border-radius:\s*0\s+0\s+var\(--border-radius-lg\)\s+var\(--border-radius-lg\)/
   );
 });
+
+test("renders an explicit pool wordmark instead of an ambiguous icon-only logo", () => {
+  assert.match(source, /class="proxy-page-logo"/);
+  assert.match(source, /class="proxy-logo-word"/);
+  assert.match(source, /{{ t\("proxyPool\.logoWordmark"\) }}/);
+});
+
+test("exposes a real manual health check action and persisted result fields", () => {
+  assert.match(source, /proxiesApi\.check\(/);
+  assert.match(source, /function checkAll\(\)/);
+  assert.match(source, /@click="checkAll"/);
+  assert.match(source, /check_status/);
+  assert.match(source, /check_latency_ms/);
+  assert.match(source, /proxyPool\.checkAll/);
+  assert.match(source, /proxyPool\.checkTarget/);
+  assert.doesNotMatch(source, /healthUnavailable/);
+});

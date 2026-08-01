@@ -135,15 +135,29 @@ export interface KeyDeleteResult {
   ignored_count: number;
 }
 
+export type ProxyCheckStatus = "unchecked" | "up" | "down";
+
 export interface ProxyNode {
   id: number;
   url: string;
   created_at: string;
+  check_status: ProxyCheckStatus;
+  check_http_status: number;
+  check_latency_ms: number;
+  check_error: string;
+  checked_at?: string;
 }
 
 export interface ProxyImportResult {
   added_count: number;
   ignored_count: number;
+}
+
+export interface ProxyCheckResult {
+  checked_count: number;
+  healthy_count: number;
+  unhealthy_count: number;
+  nodes: ProxyNode[];
 }
 
 export interface ProxyRebalanceResult {
