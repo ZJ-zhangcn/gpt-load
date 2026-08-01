@@ -1,11 +1,12 @@
 FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 
 ARG VERSION=1.0.0
+ARG UPSTREAM_VERSION=1.0.0
 WORKDIR /build
 COPY ./web/package*.json ./
 RUN npm ci
 COPY ./web .
-RUN VITE_VERSION=${VERSION} npm run build
+RUN VITE_VERSION=${VERSION} VITE_UPSTREAM_VERSION=${UPSTREAM_VERSION} npm run build
 
 
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder2

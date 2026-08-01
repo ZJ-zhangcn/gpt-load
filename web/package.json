@@ -26,7 +26,7 @@
     "format:check": "prettier --check .",
     "type-check": "vue-tsc --build --force",
     "clean": "rm -rf dist node_modules/.vite",
-    "test:unit": "node --test scripts/proxy-pool-ui.test.mjs",
+    "test:unit": "node --test scripts/*.test.mjs",
     "prepare": "echo 'Prepare script for potential Git hooks'",
     "check-all": "npm lint:check && npm format:check && npm type-check"
   },
