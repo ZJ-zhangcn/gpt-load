@@ -624,7 +624,7 @@ export default {
       "导入可复用节点；在密钥分组中选中节点后即可均衡绑定。删除节点会同步清空关联 Key 的专属代理。",
     importTitle: "批量导入节点",
     importHint: "支持 HTTP / HTTPS / SOCKS5，每行一个；逗号或分号也可分隔。",
-    importPlaceholder: "http://user:pass@host:port\nsocks5://host:port",
+    importPlaceholder: "http://host:port\nsocks5://host:port",
     importSuccess: "已导入 {added} 个节点，忽略 {ignored} 条",
     nodesTitle: "已导入节点",
     nodesCount: "共 {count} 个节点",

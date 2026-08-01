@@ -641,7 +641,7 @@ export default {
       "Import reusable nodes, then select nodes in a key group to assign them evenly. Removing a node clears its dedicated bindings.",
     importTitle: "Bulk import nodes",
     importHint: "HTTP / HTTPS / SOCKS5, one per line. Commas and semicolons also work.",
-    importPlaceholder: "http://user:pass@host:port\nsocks5://host:port",
+    importPlaceholder: "http://host:port\nsocks5://host:port",
     importSuccess: "Imported {added} nodes; ignored {ignored}",
     nodesTitle: "Imported nodes",
     nodesCount: "{count} nodes",

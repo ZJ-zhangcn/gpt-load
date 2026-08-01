@@ -643,7 +643,7 @@ export default {
     importTitle: "ノードを一括インポート",
     importHint:
       "HTTP / HTTPS / SOCKS5 を1行ずつ入力できます。カンマとセミコロンにも対応しています。",
-    importPlaceholder: "http://user:pass@host:port\nsocks5://host:port",
+    importPlaceholder: "http://host:port\nsocks5://host:port",
     importSuccess: "{added} 個をインポート、{ignored} 件を無視しました",
     nodesTitle: "インポート済みノード",
     nodesCount: "{count} 個のノード",
