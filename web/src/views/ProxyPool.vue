@@ -83,30 +83,6 @@ onMounted(() => {
       </n-button>
     </header>
 
-    <n-card class="import-card" :bordered="false">
-      <div class="section-heading">
-        <div>
-          <h3>{{ t("proxyPool.importTitle") }}</h3>
-          <p>{{ t("proxyPool.importHint") }}</p>
-        </div>
-        <n-button
-          type="primary"
-          :loading="importing"
-          :disabled="!proxiesText.trim()"
-          @click="importProxies"
-        >
-          {{ t("common.import") }}
-        </n-button>
-      </div>
-      <n-input
-        v-model:value="proxiesText"
-        type="textarea"
-        :placeholder="t('proxyPool.importPlaceholder')"
-        :rows="6"
-        aria-label="Proxy nodes"
-      />
-    </n-card>
-
     <n-card class="nodes-card" :bordered="false">
       <div class="section-heading">
         <div>
@@ -115,6 +91,30 @@ onMounted(() => {
         </div>
         <n-tag type="success" :bordered="false">{{ t("proxyPool.ready") }}</n-tag>
       </div>
+
+      <section class="proxy-import" aria-label="Proxy node import">
+        <div class="proxy-import-heading">
+          <div>
+            <h3>{{ t("proxyPool.importTitle") }}</h3>
+            <p>{{ t("proxyPool.importHint") }}</p>
+          </div>
+          <n-button
+            type="primary"
+            :loading="importing"
+            :disabled="!proxiesText.trim()"
+            @click="importProxies"
+          >
+            {{ t("common.import") }}
+          </n-button>
+        </div>
+        <n-input
+          v-model:value="proxiesText"
+          type="textarea"
+          :placeholder="t('proxyPool.importPlaceholder')"
+          :rows="6"
+          aria-label="Proxy nodes"
+        />
+      </section>
 
       <n-spin :show="loading">
         <div v-if="loadFailed" class="state-block" role="alert">
@@ -201,15 +201,39 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.import-card,
 .nodes-card {
   border: 1px solid var(--border-color);
   box-shadow: none;
 }
 
-.import-card :deep(.n-card__content) {
+.nodes-card :deep(.n-card__content) {
+  display: grid;
+  gap: 18px;
+}
+
+.proxy-import {
   display: grid;
   gap: 14px;
+  padding: 2px 0 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.proxy-import-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.proxy-import-heading h3,
+.proxy-import-heading p {
+  margin: 0;
+}
+
+.proxy-import-heading p {
+  color: var(--text-color-3);
+  line-height: 1.55;
+  margin-top: 6px;
 }
 
 .proxy-list {
@@ -264,6 +288,7 @@ onMounted(() => {
 @media (max-width: 640px) {
   .page-header,
   .section-heading,
+  .proxy-import-heading,
   .proxy-row {
     align-items: flex-start;
     flex-direction: column;
@@ -271,6 +296,7 @@ onMounted(() => {
 
   .page-header > .n-button,
   .section-heading > .n-button,
+  .proxy-import-heading > .n-button,
   .proxy-row :deep(.n-button) {
     width: 100%;
   }
