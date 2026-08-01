@@ -280,7 +280,12 @@ func StaticCache() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		if isStaticResource(path) {
+		if path == "/" || path == "/index.html" {
+			// HTML is the version manifest for content-hashed assets; never serve a stale shell.
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.Header("Pragma", "no-cache")
+			c.Header("Expires", "0")
+		} else if isStaticResource(path) {
 			c.Header("Cache-Control", "public, max-age=2592000, immutable")
 			c.Header("Expires", time.Now().AddDate(1, 0, 0).UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT"))
 		}
