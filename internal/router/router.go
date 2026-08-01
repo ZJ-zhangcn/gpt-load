@@ -194,6 +194,11 @@ func registerProxyRoutes(
 	proxyGroup.Any("/*path", proxyServer.HandleProxy)
 }
 
+func isBackendPath(path string) bool {
+	return path == "/api" || strings.HasPrefix(path, "/api/") ||
+		path == "/proxy" || strings.HasPrefix(path, "/proxy/")
+}
+
 // registerFrontendRoutes 注册前端路由
 func registerFrontendRoutes(router *gin.Engine, buildFS embed.FS, indexPage []byte) {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -206,7 +211,7 @@ func registerFrontendRoutes(router *gin.Engine, buildFS embed.FS, indexPage []by
 
 	router.Use(static.Serve("/", EmbedFolder(buildFS, "web/dist")))
 	router.NoRoute(func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/proxy") {
+		if isBackendPath(c.Request.URL.Path) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 			return
 		}
