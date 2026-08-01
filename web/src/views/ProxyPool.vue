@@ -1525,6 +1525,7 @@ onMounted(() => {
 
   .page-actions {
     align-items: stretch;
+    flex-direction: column;
   }
 
   .proxy-overview {

@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("../src/views/ProxyPool.vue", import.meta.url), "utf8");
+const navSource = await readFile(new URL("../src/components/NavBar.vue", import.meta.url), "utf8");
+const layoutSource = await readFile(
+  new URL("../src/components/Layout.vue", import.meta.url),
+  "utf8"
+);
 
 test("uses the proxy operations workspace layout", () => {
   assert.match(source, /class="proxy-overview"/);
@@ -61,6 +66,20 @@ test("makes the quick import action navigate to a usable input", () => {
   assert.match(source, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
   assert.match(source, /textarea\?\.focus\(\)/);
   assert.match(source, /quickImportAction/);
+});
+
+test("stacks the page actions instead of squeezing quick import off mobile", () => {
+  const mobileStyles =
+    source.match(/@media \(max-width: 640px\) \{([\s\S]*?)\n\}\n<\/style>/)?.[1] ?? "";
+  const pageActionsBlock = mobileStyles.match(/\.page-actions\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(pageActionsBlock, /flex-direction:\s*column;/);
+});
+
+test("uses the proxy pool brand in the menu shell and navigation item", () => {
+  assert.match(layoutSource, /ProxyPoolMark/);
+  assert.match(layoutSource, /isProxyPoolRoute/);
+  assert.match(navSource, /ProxyPoolMark/);
+  assert.match(navSource, /nav-pool-mark/);
 });
 
 test("aligns the workspace columns and gives the proxy page a logo", () => {

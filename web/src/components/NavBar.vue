@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type MenuOption } from "naive-ui";
-import { computed, h, watch } from "vue";
+import ProxyPoolMark from "@/components/ProxyPoolMark.vue";
+import { computed, h, type VNode, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 
@@ -20,7 +21,11 @@ const menuOptions = computed<MenuOption[]>(() => {
     renderMenuItem("dashboard", t("nav.dashboard"), "📊"),
     renderMenuItem("keys", t("nav.keys"), "🔑"),
     renderMenuItem("logs", t("nav.logs"), "📋"),
-    renderMenuItem("proxy-pool", t("nav.proxyPool"), ""),
+    renderMenuItem(
+      "proxy-pool",
+      t("nav.proxyPool"),
+      h(ProxyPoolMark, { compact: true, class: "nav-pool-mark" })
+    ),
     renderMenuItem("settings", t("nav.settings"), "⚙️"),
   ];
 
@@ -36,10 +41,12 @@ watch(activeMenu, () => {
   }
 });
 
-function renderMenuItem(key: string, label: string, icon: string): MenuOption {
+function renderMenuItem(key: string, label: string, icon: string | VNode | null): MenuOption {
   const children = [h("span", { class: "nav-item-text" }, label)];
-  if (icon) {
+  if (typeof icon === "string") {
     children.unshift(h("span", { class: "nav-item-icon" }, icon));
+  } else if (icon) {
+    children.unshift(icon);
   }
 
   return {

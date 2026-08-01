@@ -4,12 +4,18 @@ import GlobalTaskProgressBar from "@/components/GlobalTaskProgressBar.vue";
 import LanguageSelector from "@/components/LanguageSelector.vue";
 import Logout from "@/components/Logout.vue";
 import NavBar from "@/components/NavBar.vue";
+import ProxyPoolMark from "@/components/ProxyPoolMark.vue";
 import ThemeToggle from "@/components/ThemeToggle.vue";
 import { useMediaQuery } from "@vueuse/core";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 
 const isMenuOpen = ref(false);
 const isMobile = useMediaQuery("(max-width: 768px)");
+const route = useRoute();
+const { t } = useI18n();
+const isProxyPoolRoute = computed(() => route.name === "proxy-pool");
 
 watch(isMobile, value => {
   if (!value) {
@@ -26,11 +32,18 @@ const toggleMenu = () => {
   <n-layout class="main-layout">
     <n-layout-header class="layout-header">
       <div class="header-content">
-        <div class="header-brand">
-          <div class="brand-icon">
-            <img src="@/assets/logo.png" alt="" />
+        <div
+          class="header-brand"
+          :role="isProxyPoolRoute ? 'img' : undefined"
+          :aria-label="isProxyPoolRoute ? t('proxyPool.logoLabel') : undefined"
+        >
+          <div class="brand-icon" :class="{ 'brand-icon-proxy': isProxyPoolRoute }">
+            <proxy-pool-mark v-if="isProxyPoolRoute" compact />
+            <img v-else src="@/assets/logo.png" alt="" />
           </div>
-          <h1 v-if="!isMobile" class="brand-title">GPT Load</h1>
+          <h1 v-if="!isMobile" class="brand-title">
+            {{ isProxyPoolRoute ? t("proxyPool.logoWordmark") : "GPT Load" }}
+          </h1>
         </div>
 
         <nav v-if="!isMobile" class="header-nav">
@@ -52,7 +65,7 @@ const toggleMenu = () => {
 
     <n-drawer v-model:show="isMenuOpen" :width="260" placement="right">
       <n-drawer-content
-        title="GPT Load"
+        :title="isProxyPoolRoute ? t('proxyPool.logoWordmark') : 'GPT Load'"
         body-content-style="padding: 0; display: flex; flex-direction: column; height: 100%;"
       >
         <div style="flex: 1; overflow-y: auto">
