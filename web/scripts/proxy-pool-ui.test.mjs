@@ -67,5 +67,21 @@ test("aligns the workspace columns and gives the proxy page a logo", () => {
   assert.match(source, /class="page-title-group"/);
   assert.match(source, /class="proxy-page-logo"/);
   assert.match(source, /align-self:\s*stretch/);
-  assert.match(source, /grid-template-rows:\s*auto minmax\(0, 1fr\)/);
+  assert.match(source, /grid-template-columns:\s*minmax\(0, 1fr\) 326px/);
+});
+
+test("keeps the right-side operations as one continuous aligned stack", () => {
+  const sideStyle = source.match(/\.proxy-side-column\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.match(source, /class="proxy-side-column"/);
+  assert.match(sideStyle, /display:\s*flex/);
+  assert.match(sideStyle, /flex-direction:\s*column/);
+  assert.match(sideStyle, /gap:\s*0/);
+  assert.match(
+    source,
+    /border-radius:\s*var\(--border-radius-lg\)\s+var\(--border-radius-lg\)\s+0\s+0/
+  );
+  assert.match(
+    source,
+    /border-radius:\s*0\s+0\s+var\(--border-radius-lg\)\s+var\(--border-radius-lg\)/
+  );
 });

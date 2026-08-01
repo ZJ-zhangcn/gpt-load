@@ -1075,9 +1075,31 @@ onMounted(() => {
 
 .proxy-side-column {
   align-self: stretch;
-  display: grid;
-  gap: 16px;
-  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.proxy-side-column > .quick-import-panel,
+.proxy-side-column > .health-queue-panel {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.proxy-side-column > .quick-import-panel {
+  border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.proxy-side-column > .health-queue-panel {
+  border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+  border-top: 1px solid var(--border-color);
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .health-queue-panel :deep(.n-card__content) {
@@ -1213,8 +1235,25 @@ onMounted(() => {
 
   .proxy-side-column {
     align-self: auto;
+    border: 0;
+    border-radius: 0;
+    display: grid;
+    gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: none;
+    overflow: visible;
+  }
+
+  .proxy-side-column > .quick-import-panel,
+  .proxy-side-column > .health-queue-panel {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+  }
+
+  .proxy-side-column > .health-queue-panel {
+    flex: initial;
+    min-height: auto;
   }
 
   .health-queue-panel :deep(.n-card__content) {
