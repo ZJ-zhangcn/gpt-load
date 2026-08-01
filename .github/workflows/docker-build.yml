@@ -1,10 +1,10 @@
 name: Build and Publish Docker Image
 
 on:
-  # main is the fork's deployment branch; every update publishes a fresh image.
+  # personal is the fork's deployment branch; every update publishes a fresh image.
   push:
     branches:
-      - main
+      - personal
   workflow_dispatch:
 
 concurrency:
