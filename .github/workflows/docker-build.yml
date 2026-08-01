@@ -49,7 +49,8 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
+            # This workflow only runs on the personal deployment branch, so latest must not depend on stale event default-branch metadata.
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
