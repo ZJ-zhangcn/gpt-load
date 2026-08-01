@@ -675,6 +675,7 @@ export default {
     downloadTemplate: "Download sample",
     clearImport: "Clear",
     importAction: "Import nodes",
+    quickImportAction: "Quick import",
     nodesCardHint: "This page shows the imported inventory without inventing health results.",
     healthTitle: "Check status",
     healthLink: "Capability notes",

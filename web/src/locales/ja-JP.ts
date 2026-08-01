@@ -676,6 +676,7 @@ export default {
     downloadTemplate: "サンプルをダウンロード",
     clearImport: "クリア",
     importAction: "ノードを取り込む",
+    quickImportAction: "クイックインポート",
     nodesCardHint: "このページは取り込み済み一覧のみを表示し、ヘルス結果は推測しません。",
     healthTitle: "確認ステータス",
     healthLink: "機能について",

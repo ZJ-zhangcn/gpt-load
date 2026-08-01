@@ -26,7 +26,7 @@ import {
   NSpin,
   NTag,
 } from "naive-ui";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -248,6 +248,15 @@ function fillTemplate() {
   ].join("\n");
 }
 
+function openQuickImport() {
+  fillTemplate();
+  void nextTick(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>(".quick-import-panel textarea");
+    textarea?.scrollIntoView({ behavior: "smooth", block: "center" });
+    textarea?.focus();
+  });
+}
+
 function downloadTemplate() {
   const content = `${proxiesText.value || "# one proxy node per line\nhttp://host:3128\nsocks5://host:1080"}\n`;
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -268,8 +277,15 @@ onMounted(() => {
   <section class="proxy-pool-page" :aria-label="t('proxyPool.title')">
     <header class="page-header">
       <div class="page-heading">
-        <p class="eyebrow">{{ t("proxyPool.eyebrow") }}</p>
-        <h2>{{ t("proxyPool.title") }}</h2>
+        <div class="page-title-group">
+          <span class="proxy-page-logo" aria-hidden="true">
+            <n-icon :size="24"><layers-outline /></n-icon>
+          </span>
+          <div class="page-heading-copy">
+            <p class="eyebrow">{{ t("proxyPool.eyebrow") }}</p>
+            <h2>{{ t("proxyPool.title") }}</h2>
+          </div>
+        </div>
         <p>{{ t("proxyPool.description") }}</p>
       </div>
       <div class="page-actions">
@@ -279,11 +295,11 @@ onMounted(() => {
           </template>
           {{ t("common.refresh") }}
         </n-button>
-        <n-button type="primary" @click="fillTemplate">
+        <n-button type="primary" @click="openQuickImport">
           <template #icon>
             <n-icon><cloud-upload-outline /></n-icon>
           </template>
-          {{ t("proxyPool.importAction") }}
+          {{ t("proxyPool.quickImportAction") }}
         </n-button>
       </div>
     </header>
@@ -588,6 +604,32 @@ onMounted(() => {
   min-width: 0;
 }
 
+.page-title-group {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.page-heading-copy {
+  min-width: 0;
+}
+
+.proxy-page-logo {
+  align-items: center;
+  background: var(--primary-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 15px;
+  box-shadow: var(--shadow-sm);
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 48px;
+  justify-content: center;
+  margin-top: 2px;
+  width: 48px;
+}
+
 .page-heading h2,
 .page-heading p,
 .panel-heading h3,
@@ -773,7 +815,7 @@ onMounted(() => {
 
 .proxy-workspace {
   display: grid;
-  align-items: start;
+  align-items: stretch;
   grid-template-columns: minmax(0, 1fr) 326px;
   gap: 16px;
 }
@@ -1032,8 +1074,15 @@ onMounted(() => {
 }
 
 .proxy-side-column {
+  align-self: stretch;
   display: grid;
   gap: 16px;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.health-queue-panel :deep(.n-card__content) {
+  align-content: space-between;
+  min-height: 100%;
 }
 
 .side-card-heading {
@@ -1163,7 +1212,14 @@ onMounted(() => {
   }
 
   .proxy-side-column {
+    align-self: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+  }
+
+  .health-queue-panel :deep(.n-card__content) {
+    align-content: normal;
+    min-height: 0;
   }
 }
 

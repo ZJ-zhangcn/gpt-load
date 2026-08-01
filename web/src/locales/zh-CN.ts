@@ -658,6 +658,7 @@ export default {
     downloadTemplate: "下载示例模板",
     clearImport: "清空",
     importAction: "导入节点",
+    quickImportAction: "快速导入",
     nodesCardHint: "当前页面仅展示已导入清单，不虚构健康检测结果。",
     healthTitle: "检测状态",
     healthLink: "能力说明",

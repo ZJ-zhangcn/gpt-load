@@ -54,3 +54,18 @@ test("bounds the node list and wires client pagination", () => {
   assert.match(source, /overflow:\s*auto/);
   assert.match(source, /height:\s*clamp\(/);
 });
+
+test("makes the quick import action navigate to a usable input", () => {
+  assert.match(source, /function openQuickImport\(\)/);
+  assert.match(source, /@click="openQuickImport"/);
+  assert.match(source, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.match(source, /textarea\?\.focus\(\)/);
+  assert.match(source, /quickImportAction/);
+});
+
+test("aligns the workspace columns and gives the proxy page a logo", () => {
+  assert.match(source, /class="page-title-group"/);
+  assert.match(source, /class="proxy-page-logo"/);
+  assert.match(source, /align-self:\s*stretch/);
+  assert.match(source, /grid-template-rows:\s*auto minmax\(0, 1fr\)/);
+});
