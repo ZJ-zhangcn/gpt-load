@@ -165,6 +165,14 @@ export interface ProxyRebalanceResult {
   proxy_key_count: Record<number, number>;
 }
 
+export interface ProxyGlobalRebalanceResult {
+  processed_group_count: number;
+  bound_key_count: number;
+  healthy_proxy_count: number;
+  skipped_aggregate_count: number;
+  proxy_key_count: Record<number, number>;
+}
+
 export interface ProxyDeleteResult {
   unbound_key_count: number;
 }

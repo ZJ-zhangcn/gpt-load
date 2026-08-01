@@ -157,6 +157,54 @@ func TestProxyPoolHandlersCheckEmptyPool(t *testing.T) {
 	}
 }
 
+func TestProxyPoolHandlerRebalanceAllHealthy(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	server, db := newProxyPoolHandlerTestServer(t)
+	groups := []models.Group{
+		{Name: "handler-global-one", DisplayName: "handler-global-one", ChannelType: "openai", TestModel: "test", Upstreams: []byte("[]")},
+		{Name: "handler-global-two", DisplayName: "handler-global-two", ChannelType: "openai", TestModel: "test", Upstreams: []byte("[]")},
+	}
+	if err := db.Create(&groups).Error; err != nil {
+		t.Fatalf("create groups: %v", err)
+	}
+	keys := []models.APIKey{
+		{GroupID: groups[0].ID, KeyValue: "global-key-one", KeyHash: "global-hash-one", Status: models.KeyStatusActive},
+		{GroupID: groups[1].ID, KeyValue: "global-key-two", KeyHash: "global-hash-two", Status: models.KeyStatusActive},
+	}
+	if err := db.Create(&keys).Error; err != nil {
+		t.Fatalf("create keys: %v", err)
+	}
+	if _, err := server.ProxyPoolService.Import("http://proxy-a.example:8080"); err != nil {
+		t.Fatalf("import proxy: %v", err)
+	}
+	if err := db.Model(&models.ProxyNode{}).Where("id > 0").Update("check_status", "up").Error; err != nil {
+		t.Fatalf("mark proxy healthy: %v", err)
+	}
+
+	router := gin.New()
+	router.POST("/api/proxies/rebalance-all", server.RebalanceAllProxies)
+	request := httptest.NewRequest(http.MethodPost, "/api/proxies/rebalance-all", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("global rebalance status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var payload struct {
+		Data struct {
+			ProcessedGroupCount int `json:"processed_group_count"`
+			BoundKeyCount       int `json:"bound_key_count"`
+			HealthyProxyCount   int `json:"healthy_proxy_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode global rebalance response: %v", err)
+	}
+	if payload.Data.ProcessedGroupCount != 2 || payload.Data.BoundKeyCount != 2 || payload.Data.HealthyProxyCount != 1 {
+		t.Fatalf("unexpected global rebalance payload: %+v", payload.Data)
+	}
+}
+
 func jsonNumber(v uint) string {
 	return strconv.FormatUint(uint64(v), 10)
 }

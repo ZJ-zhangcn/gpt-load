@@ -1,6 +1,7 @@
 import type {
   ProxyCheckResult,
   ProxyDeleteResult,
+  ProxyGlobalRebalanceResult,
   ProxyImportResult,
   ProxyNode,
   ProxyRebalanceResult,
@@ -28,6 +29,11 @@ export const proxiesApi = {
       group_id: groupId,
       proxy_ids: proxyIds,
     });
+    return res.data;
+  },
+
+  async rebalanceAllHealthy(): Promise<ProxyGlobalRebalanceResult> {
+    const res = await http.post("/proxies/rebalance-all");
     return res.data;
   },
 

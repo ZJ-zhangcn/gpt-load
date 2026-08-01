@@ -40,6 +40,15 @@ type ProxyRebalanceResult struct {
 	ProxyKeyCount map[uint]int `json:"proxy_key_count"`
 }
 
+// ProxyGlobalRebalanceResult reports one atomic rebalance across every standard group.
+type ProxyGlobalRebalanceResult struct {
+	ProcessedGroupCount   int          `json:"processed_group_count"`
+	BoundKeyCount         int          `json:"bound_key_count"`
+	HealthyProxyCount     int          `json:"healthy_proxy_count"`
+	SkippedAggregateCount int          `json:"skipped_aggregate_count"`
+	ProxyKeyCount         map[uint]int `json:"proxy_key_count"`
+}
+
 // ProxyDeleteResult reports the number of keys whose dedicated proxy was cleared.
 type ProxyDeleteResult struct {
 	UnboundKeyCount int `json:"unbound_key_count"`
@@ -186,14 +195,11 @@ func (s *ProxyPoolService) Rebalance(groupID uint, proxyIDs []uint) (*ProxyRebal
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("group_id = ?", groupID).Order("id ASC").Find(&keys).Error; err != nil {
 			return fmt.Errorf("load group keys: %w", err)
 		}
-		for index, key := range keys {
-			node := nodes[index%len(nodes)]
-			if err := tx.Model(&models.APIKey{}).Where("id = ?", key.ID).Update("proxy_id", node.ID).Error; err != nil {
-				return fmt.Errorf("bind proxy for key %d: %w", key.ID, err)
-			}
-			cacheUpdates[key.ID] = node.URL
-			result.ProxyKeyCount[node.ID]++
+		proxyKeyCount, err := bindProxyNodesToKeys(tx, keys, nodes, cacheUpdates)
+		if err != nil {
+			return err
 		}
+		result.ProxyKeyCount = proxyKeyCount
 		result.BoundKeyCount = len(keys)
 		return nil
 	})
@@ -204,6 +210,94 @@ func (s *ProxyPoolService) Rebalance(groupID uint, proxyIDs []uint) (*ProxyRebal
 		return nil, err
 	}
 	return result, nil
+}
+
+// RebalanceAllHealthy assigns every currently healthy proxy to every key in every
+// standard group. Each group starts the same stable ID-sorted round robin, while
+// aggregate groups are intentionally skipped because they do not own keys.
+func (s *ProxyPoolService) RebalanceAllHealthy() (*ProxyGlobalRebalanceResult, error) {
+	result := &ProxyGlobalRebalanceResult{ProxyKeyCount: make(map[uint]int)}
+	cacheUpdates := make(map[uint]string)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var nodes []models.ProxyNode
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("check_status = ?", proxyCheckStatusUp).
+			Order("id ASC").
+			Find(&nodes).Error; err != nil {
+			return fmt.Errorf("load healthy proxy nodes: %w", err)
+		}
+		if len(nodes) == 0 {
+			return errors.New("no healthy proxy nodes available; run a real proxy check first")
+		}
+		result.HealthyProxyCount = len(nodes)
+
+		var allGroups []models.Group
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Order("id ASC").Find(&allGroups).Error; err != nil {
+			return fmt.Errorf("load key groups: %w", err)
+		}
+		standardGroups := make([]models.Group, 0, len(allGroups))
+		groupIDs := make([]uint, 0, len(allGroups))
+		for _, group := range allGroups {
+			if group.GroupType == "aggregate" {
+				result.SkippedAggregateCount++
+				continue
+			}
+			standardGroups = append(standardGroups, group)
+			groupIDs = append(groupIDs, group.ID)
+		}
+		result.ProcessedGroupCount = len(standardGroups)
+		if len(groupIDs) == 0 {
+			return nil
+		}
+
+		var keys []models.APIKey
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("group_id IN ?", groupIDs).
+			Order("group_id ASC, id ASC").
+			Find(&keys).Error; err != nil {
+			return fmt.Errorf("load all group keys: %w", err)
+		}
+		keysByGroup := make(map[uint][]models.APIKey, len(groupIDs))
+		for _, key := range keys {
+			keysByGroup[key.GroupID] = append(keysByGroup[key.GroupID], key)
+		}
+
+		for _, group := range standardGroups {
+			groupKeys := keysByGroup[group.ID]
+			if len(groupKeys) == 0 {
+				continue
+			}
+			proxyKeyCount, err := bindProxyNodesToKeys(tx, groupKeys, nodes, cacheUpdates)
+			if err != nil {
+				return err
+			}
+			result.BoundKeyCount += len(groupKeys)
+			for proxyID, count := range proxyKeyCount {
+				result.ProxyKeyCount[proxyID] += count
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := s.refreshProxyCache(cacheUpdates); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func bindProxyNodesToKeys(tx *gorm.DB, keys []models.APIKey, nodes []models.ProxyNode, cacheUpdates map[uint]string) (map[uint]int, error) {
+	proxyKeyCount := make(map[uint]int)
+	for index, key := range keys {
+		node := nodes[index%len(nodes)]
+		if err := tx.Model(&models.APIKey{}).Where("id = ?", key.ID).Update("proxy_id", node.ID).Error; err != nil {
+			return nil, fmt.Errorf("bind proxy for key %d: %w", key.ID, err)
+		}
+		cacheUpdates[key.ID] = node.URL
+		proxyKeyCount[node.ID]++
+	}
+	return proxyKeyCount, nil
 }
 
 // Delete clears bindings to a proxy node and deletes it in the same database transaction.

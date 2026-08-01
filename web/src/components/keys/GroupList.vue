@@ -15,16 +15,19 @@ interface Props {
   groups: Group[];
   selectedGroup: Group | null;
   loading?: boolean;
+  globalRebalanceLoading?: boolean;
 }
 
 interface Emits {
   (e: "group-select", group: Group): void;
   (e: "refresh"): void;
   (e: "refresh-and-select", groupId: number): void;
+  (e: "global-rebalance"): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  globalRebalanceLoading: false,
 });
 
 const emit = defineEmits<Emits>();
@@ -339,6 +342,20 @@ function handleDragEnd() {
   <div class="group-list-container">
     <n-card class="group-list-card modern-card" :bordered="false" size="small">
       <!-- 搜索框 -->
+      <div class="global-rebalance-section">
+        <n-button
+          type="primary"
+          size="small"
+          block
+          :loading="globalRebalanceLoading"
+          :disabled="loading || savingOrder"
+          @click="emit('global-rebalance')"
+        >
+          {{ t("proxyPool.globalRebalance") }}
+        </n-button>
+        <p class="global-rebalance-hint">{{ t("proxyPool.globalRebalanceHint") }}</p>
+      </div>
+
       <div class="search-section">
         <n-input
           v-model:value="searchText"
@@ -480,6 +497,19 @@ function handleDragEnd() {
 
 .search-section {
   height: 41px;
+}
+
+.global-rebalance-section {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.global-rebalance-hint {
+  margin: 0;
+  color: var(--text-color-3);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .groups-section {

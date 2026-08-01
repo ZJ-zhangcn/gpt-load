@@ -689,6 +689,13 @@ export default {
     selectedNodes: "已选 {count} 个节点",
     assignEvenly: "均衡分配",
     rebalanceSuccess: "已更新 {count} 个 Key 的专属代理",
+    globalRebalance: "全局均衡分配",
+    globalRebalanceHint: "仅使用 Healthy 节点，一次处理所有标准分组。",
+    globalRebalanceTitle: "全局均衡分配代理",
+    globalRebalanceDescription:
+      "将真实检测为 Healthy 的节点分别均衡分配给所有标准分组的全部 Key。现有专属代理会被重新覆盖，聚合分组会跳过。",
+    globalRebalanceSuccess:
+      "已处理 {groups} 个分组、{keys} 个 Key，使用 {proxies} 个 Healthy 节点；跳过 {skipped} 个聚合分组",
     keyDedicatedProxy: "专属代理 #{id}",
     keyInheritedProxy: "继承分组代理",
   },

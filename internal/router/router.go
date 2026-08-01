@@ -151,6 +151,7 @@ func registerProtectedAPIRoutes(api *gin.RouterGroup, serverHandler *handler.Ser
 		proxies.POST("/check", serverHandler.CheckProxies)
 		proxies.POST("/import", serverHandler.ImportProxies)
 		proxies.POST("/rebalance", serverHandler.RebalanceProxies)
+		proxies.POST("/rebalance-all", serverHandler.RebalanceAllProxies)
 		proxies.DELETE("/:id", serverHandler.DeleteProxy)
 	}
 

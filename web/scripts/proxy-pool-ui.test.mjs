@@ -8,6 +8,13 @@ const layoutSource = await readFile(
   new URL("../src/components/Layout.vue", import.meta.url),
   "utf8"
 );
+const keysSource = await readFile(new URL("../src/views/Keys.vue", import.meta.url), "utf8");
+const groupListSource = await readFile(
+  new URL("../src/components/keys/GroupList.vue", import.meta.url),
+  "utf8"
+);
+const proxiesApiSource = await readFile(new URL("../src/api/proxies.ts", import.meta.url), "utf8");
+const modelsSource = await readFile(new URL("../src/types/models.ts", import.meta.url), "utf8");
 
 test("uses the proxy operations workspace layout", () => {
   assert.match(source, /class="proxy-overview"/);
@@ -120,4 +127,29 @@ test("exposes a real manual health check action and persisted result fields", ()
   assert.match(source, /proxyPool\.checkAll/);
   assert.match(source, /proxyPool\.checkTarget/);
   assert.doesNotMatch(source, /healthUnavailable/);
+});
+
+test("exposes a one-click healthy-node rebalance for every key group", () => {
+  assert.match(keysSource, /globalRebalanceLoading/);
+  assert.match(keysSource, /if \(globalRebalanceLoading\.value\)/);
+  assert.match(keysSource, /rebalanceAllHealthy/);
+
+  assert.match(groupListSource, /@click="emit\(['"]global-rebalance['"]\)"/);
+  assert.match(proxiesApiSource, /rebalanceAllHealthy/);
+  assert.match(proxiesApiSource, /\/proxies\/rebalance-all/);
+  assert.match(modelsSource, /ProxyGlobalRebalanceResult/);
+});
+
+test("keeps global rebalance copy in every locale without Vue i18n links", async () => {
+  for (const locale of ["en-US", "ja-JP", "zh-CN"]) {
+    const localeSource = await readFile(
+      new URL(`../src/locales/${locale}.ts`, import.meta.url),
+      "utf8"
+    );
+    const proxyPoolStart = localeSource.lastIndexOf("  proxyPool: {");
+    const proxyPoolEnd = localeSource.indexOf("\n  },", proxyPoolStart);
+    const proxyPoolMessages = localeSource.slice(proxyPoolStart, proxyPoolEnd);
+    assert.match(proxyPoolMessages, /globalRebalance/);
+    assert.doesNotMatch(proxyPoolMessages, /globalRebalance[^\n]*@/);
+  }
 });

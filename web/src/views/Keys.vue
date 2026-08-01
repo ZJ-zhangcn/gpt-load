@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import { keysApi } from "@/api/keys";
+import { proxiesApi } from "@/api/proxies";
 import EncryptionMismatchAlert from "@/components/EncryptionMismatchAlert.vue";
 import GroupInfoCard from "@/components/keys/GroupInfoCard.vue";
 import GroupList from "@/components/keys/GroupList.vue";
 import KeyTable from "@/components/keys/KeyTable.vue";
 import SubGroupTable from "@/components/keys/SubGroupTable.vue";
 import type { Group, SubGroupInfo } from "@/types/models";
+import { useDialog } from "naive-ui";
 import { onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 
+const { t } = useI18n();
+const dialog = useDialog();
 const groups = ref<Group[]>([]);
 const loading = ref(false);
 const selectedGroup = ref<Group | null>(null);
 const subGroups = ref<SubGroupInfo[]>([]);
 const loadingSubGroups = ref(false);
+const globalRebalanceLoading = ref(false);
 const router = useRouter();
 const route = useRoute();
 
@@ -119,6 +125,43 @@ function handleNavigateToGroup(groupId: number) {
     handleGroupSelect(targetGroup);
   }
 }
+
+function handleGlobalRebalance() {
+  if (globalRebalanceLoading.value) {
+    return;
+  }
+
+  const confirmation = dialog.warning({
+    title: t("proxyPool.globalRebalanceTitle"),
+    content: t("proxyPool.globalRebalanceDescription"),
+    positiveText: t("common.confirm"),
+    negativeText: t("common.cancel"),
+    onPositiveClick: async () => {
+      if (globalRebalanceLoading.value) {
+        return;
+      }
+      globalRebalanceLoading.value = true;
+      confirmation.loading = true;
+      try {
+        const result = await proxiesApi.rebalanceAllHealthy();
+        window.$message?.success(
+          t("proxyPool.globalRebalanceSuccess", {
+            groups: result.processed_group_count,
+            keys: result.bound_key_count,
+            proxies: result.healthy_proxy_count,
+            skipped: result.skipped_aggregate_count,
+          })
+        );
+        await refreshGroupsAndSelect();
+      } catch (error) {
+        console.error("Global proxy rebalance failed:", error);
+      } finally {
+        confirmation.loading = false;
+        globalRebalanceLoading.value = false;
+      }
+    },
+  });
+}
 </script>
 
 <template>
@@ -132,9 +175,11 @@ function handleNavigateToGroup(groupId: number) {
           :groups="groups"
           :selected-group="selectedGroup"
           :loading="loading"
+          :global-rebalance-loading="globalRebalanceLoading"
           @group-select="handleGroupSelect"
           @refresh="() => refreshGroupsAndSelect()"
           @refresh-and-select="id => refreshGroupsAndSelect(id)"
+          @global-rebalance="handleGlobalRebalance"
         />
       </div>
 

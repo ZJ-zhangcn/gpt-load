@@ -709,6 +709,13 @@ export default {
     selectedNodes: "{count} nodes selected",
     assignEvenly: "Assign evenly",
     rebalanceSuccess: "Updated dedicated proxy for {count} keys",
+    globalRebalance: "Rebalance all groups",
+    globalRebalanceHint: "Use Healthy nodes only, across every standard group.",
+    globalRebalanceTitle: "Rebalance all groups",
+    globalRebalanceDescription:
+      "Evenly assign real Healthy nodes to every key in every standard group. Existing dedicated proxies will be replaced; aggregate groups are skipped.",
+    globalRebalanceSuccess:
+      "Processed {groups} groups and {keys} keys with {proxies} Healthy nodes; skipped {skipped} aggregate groups",
     keyDedicatedProxy: "Dedicated proxy #{id}",
     keyInheritedProxy: "Inherits group proxy",
   },

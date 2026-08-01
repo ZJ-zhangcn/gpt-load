@@ -215,3 +215,101 @@ func TestProxyPoolRebalanceRejectsAggregateGroups(t *testing.T) {
 		t.Fatal("expected aggregate group rebalance to fail")
 	}
 }
+
+func TestProxyPoolRebalanceAllUsesHealthyNodesForEveryStandardGroup(t *testing.T) {
+	service, db, provider, encryptionSvc, keyStore := newProxyPoolTestService(t)
+	firstGroup := createTestGroup(t, db, "first-standard-group")
+	secondGroup := createTestGroup(t, db, "second-standard-group")
+	aggregateGroup := createTestGroup(t, db, "aggregate-group")
+	if err := db.Model(&aggregateGroup).Update("group_type", "aggregate").Error; err != nil {
+		t.Fatalf("make aggregate group: %v", err)
+	}
+	createTestKeys(t, db, encryptionSvc, firstGroup.ID, 3)
+	createTestKeys(t, db, encryptionSvc, secondGroup.ID, 2)
+	createTestKeys(t, db, encryptionSvc, aggregateGroup.ID, 1)
+	if err := provider.LoadKeysFromDB(); err != nil {
+		t.Fatalf("load keys into cache: %v", err)
+	}
+
+	if _, err := service.Import("http://proxy-a.example:8080\nhttp://proxy-b.example:8080\nhttp://proxy-c.example:8080"); err != nil {
+		t.Fatalf("import proxies: %v", err)
+	}
+	var nodes []models.ProxyNode
+	if err := db.Order("id ASC").Find(&nodes).Error; err != nil {
+		t.Fatalf("load proxy nodes: %v", err)
+	}
+	if err := db.Model(&models.ProxyNode{}).Where("id = ?", nodes[0].ID).Update("check_status", proxyCheckStatusUp).Error; err != nil {
+		t.Fatalf("mark first proxy healthy: %v", err)
+	}
+	if err := db.Model(&models.ProxyNode{}).Where("id = ?", nodes[1].ID).Update("check_status", proxyCheckStatusUp).Error; err != nil {
+		t.Fatalf("mark second proxy healthy: %v", err)
+	}
+	if err := db.Model(&models.ProxyNode{}).Where("id = ?", nodes[2].ID).Update("check_status", proxyCheckStatusDown).Error; err != nil {
+		t.Fatalf("mark third proxy unhealthy: %v", err)
+	}
+
+	result, err := service.RebalanceAllHealthy()
+	if err != nil {
+		t.Fatalf("rebalance all healthy proxies: %v", err)
+	}
+	if result.ProcessedGroupCount != 2 || result.BoundKeyCount != 5 || result.HealthyProxyCount != 2 || result.SkippedAggregateCount != 1 {
+		t.Fatalf("unexpected global rebalance result: %+v", result)
+	}
+
+	assertGroupProxyIDs := func(groupID uint, want []uint) {
+		t.Helper()
+		var keys []models.APIKey
+		if err := db.Where("group_id = ?", groupID).Order("id ASC").Find(&keys).Error; err != nil {
+			t.Fatalf("load group %d keys: %v", groupID, err)
+		}
+		if len(keys) != len(want) {
+			t.Fatalf("group %d key count = %d, want %d", groupID, len(keys), len(want))
+		}
+		for index, key := range keys {
+			if key.ProxyID == nil || *key.ProxyID != want[index] {
+				t.Fatalf("group %d key %d proxy = %#v, want %d", groupID, key.ID, key.ProxyID, want[index])
+			}
+			cached, cacheErr := keyStore.HGetAll(fmt.Sprintf("key:%d", key.ID))
+			if cacheErr != nil {
+				t.Fatalf("read key %d cache: %v", key.ID, cacheErr)
+			}
+			if cached["proxy_url"] == "" {
+				t.Fatalf("key %d cache did not receive its proxy URL", key.ID)
+			}
+		}
+	}
+	assertGroupProxyIDs(firstGroup.ID, []uint{nodes[0].ID, nodes[1].ID, nodes[0].ID})
+	assertGroupProxyIDs(secondGroup.ID, []uint{nodes[0].ID, nodes[1].ID})
+
+	var aggregateKeys []models.APIKey
+	if err := db.Where("group_id = ?", aggregateGroup.ID).Find(&aggregateKeys).Error; err != nil {
+		t.Fatalf("load aggregate keys: %v", err)
+	}
+	if len(aggregateKeys) != 1 || aggregateKeys[0].ProxyID != nil {
+		t.Fatalf("aggregate group should be skipped: %#v", aggregateKeys)
+	}
+}
+
+func TestProxyPoolRebalanceAllRequiresHealthyProxy(t *testing.T) {
+	service, db, provider, encryptionSvc, _ := newProxyPoolTestService(t)
+	group := createTestGroup(t, db, "standard-group")
+	keys := createTestKeys(t, db, encryptionSvc, group.ID, 1)
+	if err := provider.LoadKeysFromDB(); err != nil {
+		t.Fatalf("load keys into cache: %v", err)
+	}
+	if _, err := service.Import("http://proxy-a.example:8080"); err != nil {
+		t.Fatalf("import proxy: %v", err)
+	}
+
+	if _, err := service.RebalanceAllHealthy(); err == nil {
+		t.Fatal("expected global rebalance without healthy proxy to fail")
+	}
+
+	var unchanged models.APIKey
+	if err := db.First(&unchanged, keys[0].ID).Error; err != nil {
+		t.Fatalf("load unchanged key: %v", err)
+	}
+	if unchanged.ProxyID != nil {
+		t.Fatalf("failed global rebalance changed key: %#v", unchanged.ProxyID)
+	}
+}

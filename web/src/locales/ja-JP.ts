@@ -710,6 +710,13 @@ export default {
     selectedNodes: "{count} 個選択済み",
     assignEvenly: "均等に割り当て",
     rebalanceSuccess: "{count} 個のキーの専用プロキシを更新しました",
+    globalRebalance: "全グループを均等に割り当て",
+    globalRebalanceHint: "利用可能と確認されたノードのみを、すべての標準グループで使用します。",
+    globalRebalanceTitle: "全グループの均等割り当て",
+    globalRebalanceDescription:
+      "実際の確認で利用可能なノードを、すべての標準グループの全キーへ均等に割り当てます。既存の専用プロキシは置き換えられ、集約グループはスキップされます。",
+    globalRebalanceSuccess:
+      "{groups} グループ、{keys} キーを {proxies} 個の利用可能ノードで処理しました。集約グループ {skipped} 件をスキップしました",
     keyDedicatedProxy: "専用プロキシ #{id}",
     keyInheritedProxy: "グループプロキシを継承",
   },

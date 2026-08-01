@@ -79,6 +79,16 @@ func (s *Server) RebalanceProxies(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// RebalanceAllProxies assigns every healthy pool node across all standard groups in one transaction.
+func (s *Server) RebalanceAllProxies(c *gin.Context) {
+	result, err := s.ProxyPoolService.RebalanceAllHealthy()
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrBadRequest, err.Error()))
+		return
+	}
+	response.Success(c, result)
+}
+
 // DeleteProxy deletes a pool node and atomically clears every key that referenced it.
 func (s *Server) DeleteProxy(c *gin.Context) {
 	proxyID, err := strconv.ParseUint(c.Param("id"), 10, 64)
