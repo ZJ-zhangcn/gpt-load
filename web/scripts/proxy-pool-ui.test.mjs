@@ -4,14 +4,23 @@ import test from "node:test";
 
 const source = await readFile(new URL("../src/views/ProxyPool.vue", import.meta.url), "utf8");
 
-test("keeps the proxy import form inside the visible nodes card", () => {
-  const nodesCardStart = source.indexOf('<n-card class="nodes-card"');
-  assert.ok(nodesCardStart >= 0, "nodes card must exist");
+test("uses the proxy operations workspace layout", () => {
+  assert.match(source, /class="proxy-overview"/);
+  assert.match(source, /class="proxy-stat-card"/);
+  assert.match(source, /class="proxy-workspace"/);
+  assert.match(source, /class="proxy-list-panel"/);
+  assert.match(source, /class="quick-import-panel"/);
+  assert.match(source, /class="health-queue-panel"/);
+});
 
-  const nodesCardTemplate = source.slice(nodesCardStart);
-  assert.match(nodesCardTemplate, /<section class="proxy-import"/);
-  assert.match(nodesCardTemplate, /v-model:value="proxiesText"/);
-  assert.match(nodesCardTemplate, /@click="importProxies"/);
+test("keeps the import action wired inside the quick import panel", () => {
+  const importPanelStart = source.indexOf('class="quick-import-panel"');
+  assert.ok(importPanelStart >= 0, "quick import panel must exist");
+
+  const importPanelTemplate = source.slice(importPanelStart);
+  assert.match(importPanelTemplate, /v-model:value="proxiesText"/);
+  assert.match(importPanelTemplate, /@click="importProxies"/);
+  assert.match(importPanelTemplate, /:disabled="!proxiesText\.trim\(\)"/);
   assert.doesNotMatch(source, /<n-card class="import-card"/);
 });
 
