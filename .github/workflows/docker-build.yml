@@ -1,6 +1,7 @@
 name: Build and Publish Docker Image
 
 on:
+  # main is the fork's deployment branch; every update publishes a fresh image.
   push:
     branches:
       - main
