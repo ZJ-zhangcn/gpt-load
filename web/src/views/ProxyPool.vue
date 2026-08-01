@@ -15,8 +15,18 @@ import {
 } from "@vicons/ionicons5";
 import { proxiesApi } from "@/api/proxies";
 import type { ProxyNode } from "@/types/models";
-import { NButton, NCard, NIcon, NInput, NPopconfirm, NSelect, NSpin, NTag } from "naive-ui";
-import { computed, onMounted, ref } from "vue";
+import {
+  NButton,
+  NCard,
+  NIcon,
+  NInput,
+  NPagination,
+  NPopconfirm,
+  NSelect,
+  NSpin,
+  NTag,
+} from "naive-ui";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -29,6 +39,8 @@ const loadFailed = ref(false);
 const searchText = ref("");
 const protocolFilter = ref("all");
 const filterMode = ref<"all" | "imported" | "pending">("all");
+const pageSize = ref(8);
+const currentPage = ref(1);
 
 const protocolOptions = computed(() => [
   { label: t("proxyPool.allProtocols"), value: "all" },
@@ -145,16 +157,36 @@ const filteredProxies = computed(() => {
   });
 });
 
-const visibleRows = computed(() =>
-  filteredProxies.value.map(proxy => {
+const pageCount = computed(() =>
+  Math.max(1, Math.ceil(filteredProxies.value.length / pageSize.value))
+);
+const pageRangeStart = computed(() =>
+  filteredProxies.value.length === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1
+);
+const pageRangeEnd = computed(() =>
+  Math.min(currentPage.value * pageSize.value, filteredProxies.value.length)
+);
+const visibleRows = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredProxies.value.slice(start, start + pageSize.value).map(proxy => {
     const parsed = parseProxyUrl(proxy.url);
     return {
       ...proxy,
       ...parsed,
       createdLabel: formatCreatedAt(proxy.created_at),
     };
-  })
-);
+  });
+});
+
+watch([searchText, protocolFilter, filterMode], () => {
+  currentPage.value = 1;
+});
+
+watch(pageCount, count => {
+  if (currentPage.value > count) {
+    currentPage.value = count;
+  }
+});
 
 async function loadProxies() {
   loading.value = true;
@@ -354,7 +386,7 @@ onMounted(() => {
             </n-button>
           </div>
 
-          <div v-else-if="visibleRows.length === 0" class="empty-state compact-empty">
+          <div v-else-if="filteredProxies.length === 0" class="empty-state compact-empty">
             <span class="empty-illustration">
               <n-icon :size="24"><search-outline /></n-icon>
             </span>
@@ -364,76 +396,91 @@ onMounted(() => {
             </n-button>
           </div>
 
-          <div v-else class="proxy-table-wrap">
-            <table class="proxy-table">
-              <thead>
-                <tr>
-                  <th>{{ t("proxyPool.endpoint") }}</th>
-                  <th>{{ t("proxyPool.protocol") }}</th>
-                  <th>{{ t("proxyPool.createdAt") }}</th>
-                  <th>{{ t("proxyPool.state") }}</th>
-                  <th>{{ t("proxyPool.binding") }}</th>
-                  <th class="actions-column">{{ t("proxyPool.actions") }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in visibleRows" :key="row.id">
-                  <td>
-                    <div class="endpoint-cell">
-                      <span class="endpoint-icon">
-                        <n-icon><server-outline /></n-icon>
-                      </span>
-                      <div class="endpoint-copy">
-                        <strong>{{ row.host }}</strong>
-                        <code>{{ row.safeUrl }}</code>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="protocol-badge" :class="row.protocol.toLowerCase()">
-                      {{ row.protocol }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="muted-cell">{{ row.createdLabel }}</span>
-                  </td>
-                  <td>
-                    <span class="status-cell pending">
-                      <i class="status-dot" />
-                      {{ t("proxyPool.pendingCheck") }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="binding-cell">
-                      <n-icon><checkmark-circle-outline /></n-icon>
-                      {{ t("proxyPool.bindingReady") }}
-                    </span>
-                  </td>
-                  <td class="actions-column">
-                    <n-popconfirm
-                      :positive-text="t('common.delete')"
-                      :negative-text="t('common.cancel')"
-                      @positive-click="deleteProxy(row)"
-                    >
-                      <template #trigger>
-                        <n-button
-                          circle
-                          quaternary
-                          type="error"
-                          :loading="deletingId === row.id"
-                          :aria-label="t('common.delete')"
+          <div v-else class="proxy-table-section">
+            <div class="proxy-table-viewport">
+              <div class="proxy-table-wrap">
+                <table class="proxy-table">
+                  <thead>
+                    <tr>
+                      <th>{{ t("proxyPool.endpoint") }}</th>
+                      <th>{{ t("proxyPool.protocol") }}</th>
+                      <th>{{ t("proxyPool.createdAt") }}</th>
+                      <th>{{ t("proxyPool.state") }}</th>
+                      <th>{{ t("proxyPool.binding") }}</th>
+                      <th class="actions-column">{{ t("proxyPool.actions") }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in visibleRows" :key="row.id">
+                      <td>
+                        <div class="endpoint-cell">
+                          <span class="endpoint-icon">
+                            <n-icon><server-outline /></n-icon>
+                          </span>
+                          <div class="endpoint-copy">
+                            <strong>{{ row.host }}</strong>
+                            <code>{{ row.safeUrl }}</code>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="protocol-badge" :class="row.protocol.toLowerCase()">
+                          {{ row.protocol }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="muted-cell">{{ row.createdLabel }}</span>
+                      </td>
+                      <td>
+                        <span class="status-cell pending">
+                          <i class="status-dot" />
+                          {{ t("proxyPool.pendingCheck") }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="binding-cell">
+                          <n-icon><checkmark-circle-outline /></n-icon>
+                          {{ t("proxyPool.bindingReady") }}
+                        </span>
+                      </td>
+                      <td class="actions-column">
+                        <n-popconfirm
+                          :positive-text="t('common.delete')"
+                          :negative-text="t('common.cancel')"
+                          @positive-click="deleteProxy(row)"
                         >
-                          <template #icon>
-                            <n-icon><trash-outline /></n-icon>
+                          <template #trigger>
+                            <n-button
+                              circle
+                              quaternary
+                              type="error"
+                              :loading="deletingId === row.id"
+                              :aria-label="t('common.delete')"
+                            >
+                              <template #icon>
+                                <n-icon><trash-outline /></n-icon>
+                              </template>
+                            </n-button>
                           </template>
-                        </n-button>
-                      </template>
-                      {{ t("proxyPool.deleteConfirm") }}
-                    </n-popconfirm>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                          {{ t("proxyPool.deleteConfirm") }}
+                        </n-popconfirm>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="table-footer">
+              <span class="table-range">
+                {{ pageRangeStart }}–{{ pageRangeEnd }} / {{ filteredProxies.length }}
+              </span>
+              <n-pagination
+                v-model:page="currentPage"
+                :page-count="pageCount"
+                :page-size="pageSize"
+                size="small"
+              />
+            </div>
           </div>
         </n-spin>
       </n-card>
@@ -812,14 +859,47 @@ onMounted(() => {
   flex: 0 0 150px;
 }
 
+.proxy-table-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.proxy-table-viewport {
+  height: clamp(280px, 42vh, 430px);
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .proxy-table-wrap {
-  overflow-x: auto;
+  min-width: 720px;
 }
 
 .proxy-table {
   border-collapse: collapse;
   min-width: 720px;
   width: 100%;
+}
+
+.table-footer {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.table-range {
+  color: var(--text-color-3, var(--text-tertiary));
+  flex: 0 0 auto;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.table-footer :deep(.n-pagination) {
+  margin-left: auto;
 }
 
 .proxy-table th {
@@ -1135,6 +1215,15 @@ onMounted(() => {
     align-items: stretch;
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .table-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .table-footer :deep(.n-pagination) {
+    margin-left: 0;
   }
 
   .search-input,

@@ -43,3 +43,14 @@ test("keeps proxy import placeholders compatible with Vue i18n", async () => {
     );
   }
 });
+
+test("bounds the node list and wires client pagination", () => {
+  assert.match(source, /class="proxy-table-viewport"/);
+  assert.match(source, /<n-pagination/);
+  assert.match(source, /const pageSize = ref\(8\)/);
+  assert.match(source, /const currentPage = ref\(1\)/);
+  assert.match(source, /const start = \(currentPage\.value - 1\) \* pageSize\.value/);
+  assert.match(source, /slice\(start, start \+ pageSize\.value\)/);
+  assert.match(source, /overflow:\s*auto/);
+  assert.match(source, /height:\s*clamp\(/);
+});
