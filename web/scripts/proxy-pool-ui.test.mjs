@@ -153,3 +153,28 @@ test("keeps global rebalance copy in every locale without Vue i18n links", async
     assert.doesNotMatch(proxyPoolMessages, /globalRebalance[^\n]*@/);
   }
 });
+
+test("keeps the keys sidebar layout flex-safe after adding global rebalance", () => {
+  const readStyleBlock = selector => {
+    const selectorStart = groupListSource.indexOf(`${selector} {`);
+    const blockStart = groupListSource.indexOf("{", selectorStart);
+    const blockEnd = groupListSource.indexOf("}", blockStart);
+    return groupListSource.slice(blockStart + 1, blockEnd);
+  };
+
+  const groupListCardStyle = readStyleBlock(".group-list-card");
+  const globalRebalanceStyle = readStyleBlock(".global-rebalance-section");
+  const searchStyle = readStyleBlock(".search-section");
+  const groupsStyle = readStyleBlock(".groups-section");
+  const addStyle = readStyleBlock(".add-section");
+
+  assert.ok(groupListCardStyle.includes("display: flex"));
+  assert.ok(groupListCardStyle.includes("flex-direction: column"));
+  assert.ok(globalRebalanceStyle.includes("flex-shrink: 0"));
+  assert.ok(searchStyle.includes("flex: 0 0 41px"));
+  assert.ok(groupsStyle.includes("flex: 1 1 auto"));
+  assert.ok(groupsStyle.includes("min-height: 0"));
+  assert.ok(groupsStyle.includes("height: auto"));
+  assert.equal(groupsStyle.includes("height: calc("), false);
+  assert.ok(addStyle.includes("flex-shrink: 0"));
+});

@@ -472,6 +472,9 @@ function handleDragEnd() {
 <style scoped>
 :deep(.n-card__content) {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .groups-section::-webkit-scrollbar {
@@ -497,12 +500,14 @@ function handleDragEnd() {
 
 .search-section {
   height: 41px;
+  flex: 0 0 41px;
 }
 
 .global-rebalance-section {
   display: grid;
   gap: 6px;
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .global-rebalance-hint {
@@ -513,8 +518,9 @@ function handleDragEnd() {
 }
 
 .groups-section {
-  flex: 1;
-  height: calc(100% - 120px);
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -703,6 +709,7 @@ function handleDragEnd() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* 滚动条样式 */
