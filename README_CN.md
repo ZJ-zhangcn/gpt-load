@@ -518,7 +518,30 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 - 将 `https://api.anthropic.com` 替换为 `http://localhost:3001/proxy/anthropic`
 - 将 `x-api-key` 头部中的原始 API Key 替换为**代理密钥**
 
-### 6. 支持的接口
+### 6. Generic / Passthrough 接口调用示例
+
+`generic` 分组不会做 OpenAI/Fish 字段转换，会原样转发请求路径、请求体、关键请求头和响应。适合 Fish Audio 等非 OpenAI 原生接口。
+
+假设创建了 `fish-audio` 分组，上游为 `https://api.fish.audio`，并在该分组中添加多个 Fish API Key：
+
+```bash
+# Fish TTS：model 保持在请求头，body 原样转发
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/tts \
+  -H "Authorization: Bearer <proxy-key>" \
+  -H "model: s2-pro" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"你好","reference_id":"<voice-id>","format":"mp3"}'
+
+# Fish ASR：multipart 字段名使用 audio，原样转发
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
+  -H "Authorization: Bearer <proxy-key>" \
+  -F "audio=@sample.wav" \
+  -F "language=zh"
+```
+
+`generic` 分组默认使用 `GET /model` 做低成本密钥校验；其他上游可在“测试路径”中改成自己的 GET 校验端点。分组内的多个 API Key 继续使用现有轮询、失败切换和代理节点绑定逻辑。
+
+### 7. 支持的接口
 
 **OpenAI Chat Completions 格式（`openai`）：**
 
@@ -546,7 +569,7 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 - `/v1/models` - 模型列表（如果可用）
 - 以及其他所有 Anthropic 原生接口
 
-### 7. 客户端 SDK 配置
+### 8. 客户端 SDK 配置
 
 **OpenAI Python SDK：**
 

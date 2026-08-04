@@ -143,6 +143,8 @@ function getChannelTagType(channelType: string) {
       return "info";
     case "anthropic":
       return "warning";
+    case "generic":
+      return "info";
     default:
       return "default";
   }

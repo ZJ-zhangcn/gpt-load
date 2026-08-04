@@ -518,7 +518,30 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 - Replace `https://api.anthropic.com` with `http://localhost:3001/proxy/anthropic`
 - Replace the original API Key in `x-api-key` header with the **Proxy Key**
 
-### 6. Supported Interfaces
+### 6. Generic / Passthrough Interface Example
+
+A `generic` group performs no OpenAI/Fish field conversion. It forwards the request path, body, provider headers, and response as-is, which is suitable for Fish Audio and other non-OpenAI-native APIs.
+
+Assume a `fish-audio` group points to `https://api.fish.audio` and contains multiple Fish API keys:
+
+```bash
+# Fish TTS: keep model in the header and forward the body unchanged
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/tts \
+  -H "Authorization: Bearer <proxy-key>" \
+  -H "model: s2-pro" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Hello","reference_id":"<voice-id>","format":"mp3"}'
+
+# Fish ASR: use the native multipart field name audio
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
+  -H "Authorization: Bearer <proxy-key>" \
+  -F "audio=@sample.wav" \
+  -F "language=en"
+```
+
+The `generic` group uses `GET /model` as its default low-cost key validation endpoint; set a different GET endpoint in the group test-path field for another upstream. Multiple keys continue to use the existing rotation, failover, and per-key proxy binding logic.
+
+### 7. Supported Interfaces
 
 **OpenAI Chat Completions Format (`openai`):**
 
@@ -546,7 +569,7 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 - `/v1/models` - Model list (if available)
 - And all other Anthropic native interfaces
 
-### 7. Client SDK Configuration
+### 8. Client SDK Configuration
 
 **OpenAI Python SDK:**
 

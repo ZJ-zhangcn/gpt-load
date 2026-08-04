@@ -185,6 +185,10 @@ func GetValidationEndpoint(group *models.Group) string {
 		return "/v1/responses"
 	case "anthropic":
 		return "/v1/messages"
+	case "generic":
+		// Fish Audio exposes GET /model as a low-cost authenticated
+		// endpoint for validating keys. Generic users can override it per group.
+		return "/model"
 	default:
 		return ""
 	}
