@@ -522,31 +522,31 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 
 `generic` 分组默认原样转发 provider 原生请求；同时为 Fish-style TTS/ASR 上游提供 OpenAI 音频兼容别名：`/v1/audio/speech` 会转换到 `/v1/tts`，`/v1/audio/transcriptions` 会转换到 `/v1/asr`。原生 `/v1/tts`、`/v1/asr` 请求仍保持原样。
 
-假设创建了 `fish-audio` 分组，上游为 `https://api.fish.audio`，并在该分组中添加多个 Fish API Key：
+假设创建了 `fishaudio` 分组，上游为 `https://api.fish.audio`，并在该分组中添加多个 Fish API Key：
 
 ```bash
 # Fish TTS：model 保持在请求头，body 原样转发
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/tts \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/tts \
   -H "Authorization: Bearer <proxy-key>" \
   -H "model: s2-pro" \
   -H "Content-Type: application/json" \
   -d '{"text":"你好","reference_id":"<voice-id>","format":"mp3"}'
 
 # Fish ASR：multipart 字段名使用 audio，原样转发
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/asr \
   -H "Authorization: Bearer <proxy-key>" \
   -F "audio=@sample.wav" \
   -F "language=zh"
 
 # OpenAI 兼容 TTS：适合 NewAPI / OpenAI SDK
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/speech \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/audio/speech \
   -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -d '{"model":"s2-pro","input":"你好","voice":"<voice-id>","response_format":"mp3","speed":1.0}' \
   -o output.mp3
 
 # OpenAI 兼容 ASR：file 会转换为 Fish 的 audio 字段
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/audio/transcriptions \
   -H "Authorization: Bearer ***" \
   -F "file=@sample.wav" \
   -F "model=s2-pro" \
@@ -555,7 +555,7 @@ curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
 
 `generic` 分组默认使用 `GET /model` 做低成本密钥校验；其他上游可在“测试路径”中改成自己的 GET 校验端点。分组内的多个 API Key 继续使用现有轮询、失败切换和代理节点绑定逻辑。
 
-NewAPI 接入时，将该分组作为 OpenAI 音频上游：Base URL 使用 `http://localhost:3001/proxy/fish-audio`（生产环境替换为实际 HTTPS 地址），上游 Key 使用 GPT-Load Proxy Key；Fish API Key 只保存在 GPT-Load 分组中。OpenAI `voice` 字段应填写 Fish 的 `reference_id`。
+NewAPI 接入时，将该分组作为 OpenAI 音频上游：Base URL 使用 `http://localhost:3001/proxy/fishaudio`（生产环境替换为实际 HTTPS 地址），上游 Key 使用 GPT-Load Proxy Key；Fish API Key 只保存在 GPT-Load 分组中。OpenAI `voice` 字段应填写 Fish 的 `reference_id`。
 
 ### 7. 支持的接口
 

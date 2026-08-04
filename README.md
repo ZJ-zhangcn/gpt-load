@@ -522,31 +522,31 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 
 A `generic` group forwards provider-native requests as-is by default. It also provides OpenAI audio aliases for Fish-style TTS/ASR upstreams: `/v1/audio/speech` is converted to `/v1/tts`, and `/v1/audio/transcriptions` is converted to `/v1/asr`. Native `/v1/tts` and `/v1/asr` requests remain unchanged.
 
-Assume a `fish-audio` group points to `https://api.fish.audio` and contains multiple Fish API keys:
+Assume a `fishaudio` group points to `https://api.fish.audio` and contains multiple Fish API keys:
 
 ```bash
 # Fish TTS: keep model in the header and forward the body unchanged
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/tts \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/tts \
   -H "Authorization: Bearer <proxy-key>" \
   -H "model: s2-pro" \
   -H "Content-Type: application/json" \
   -d '{"text":"Hello","reference_id":"<voice-id>","format":"mp3"}'
 
 # Fish ASR: use the native multipart field name audio
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/asr \
   -H "Authorization: Bearer <proxy-key>" \
   -F "audio=@sample.wav" \
   -F "language=en"
 
 # OpenAI-compatible TTS: suitable for NewAPI / OpenAI SDK
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/speech \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/audio/speech \
   -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -d '{"model":"s2-pro","input":"Hello","voice":"<voice-id>","response_format":"mp3","speed":1.0}' \
   -o output.mp3
 
 # OpenAI-compatible ASR: file is converted to Fish's audio field
-curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
+curl -X POST http://localhost:3001/proxy/fishaudio/v1/audio/transcriptions \
   -H "Authorization: Bearer ***" \
   -F "file=@sample.wav" \
   -F "model=s2-pro" \
@@ -555,7 +555,7 @@ curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
 
 The `generic` group uses `GET /model` as its default low-cost key validation endpoint; set a different GET endpoint in the group test-path field for another upstream. Multiple keys continue to use the existing rotation, failover, and per-key proxy binding logic.
 
-For NewAPI, use the group as an OpenAI audio upstream: set the Base URL to `http://localhost:3001/proxy/fish-audio` (replace it with the production HTTPS URL in deployment) and use the GPT-Load Proxy Key as the upstream key. Keep Fish API keys only in the GPT-Load group. The OpenAI `voice` field should contain the Fish `reference_id`.
+For NewAPI, use the group as an OpenAI audio upstream: set the Base URL to `http://localhost:3001/proxy/fishaudio` (replace it with the production HTTPS URL in deployment) and use the GPT-Load Proxy Key as the upstream key. Keep Fish API keys only in the GPT-Load group. The OpenAI `voice` field should contain the Fish `reference_id`.
 
 ### 7. Supported Interfaces
 
