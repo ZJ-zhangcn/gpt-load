@@ -19,9 +19,8 @@ func init() {
 	Register("generic", newGenericChannel)
 }
 
-// GenericChannel forwards requests to an upstream without provider-specific
-// payload conversion. It is intended for APIs whose path, headers, body and
-// response format must remain under the caller's control.
+// GenericChannel forwards provider-native requests and adds OpenAI audio aliases
+// for upstreams that expose Fish-style TTS/ASR endpoints.
 type GenericChannel struct {
 	*BaseChannel
 }

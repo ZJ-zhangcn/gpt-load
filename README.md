@@ -520,7 +520,7 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 
 ### 6. Generic / Passthrough Interface Example
 
-A `generic` group performs no OpenAI/Fish field conversion. It forwards the request path, body, provider headers, and response as-is, which is suitable for Fish Audio and other non-OpenAI-native APIs.
+A `generic` group forwards provider-native requests as-is by default. It also provides OpenAI audio aliases for Fish-style TTS/ASR upstreams: `/v1/audio/speech` is converted to `/v1/tts`, and `/v1/audio/transcriptions` is converted to `/v1/asr`. Native `/v1/tts` and `/v1/asr` requests remain unchanged.
 
 Assume a `fish-audio` group points to `https://api.fish.audio` and contains multiple Fish API keys:
 
@@ -537,9 +537,25 @@ curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
   -H "Authorization: Bearer <proxy-key>" \
   -F "audio=@sample.wav" \
   -F "language=en"
+
+# OpenAI-compatible TTS: suitable for NewAPI / OpenAI SDK
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/speech \
+  -H "Authorization: Bearer ***" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"s2-pro","input":"Hello","voice":"<voice-id>","response_format":"mp3","speed":1.0}' \
+  -o output.mp3
+
+# OpenAI-compatible ASR: file is converted to Fish's audio field
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
+  -H "Authorization: Bearer ***" \
+  -F "file=@sample.wav" \
+  -F "model=s2-pro" \
+  -F "language=en"
 ```
 
 The `generic` group uses `GET /model` as its default low-cost key validation endpoint; set a different GET endpoint in the group test-path field for another upstream. Multiple keys continue to use the existing rotation, failover, and per-key proxy binding logic.
+
+For NewAPI, use the group as an OpenAI audio upstream: set the Base URL to `http://localhost:3001/proxy/fish-audio` (replace it with the production HTTPS URL in deployment) and use the GPT-Load Proxy Key as the upstream key. Keep Fish API keys only in the GPT-Load group. The OpenAI `voice` field should contain the Fish `reference_id`.
 
 ### 7. Supported Interfaces
 
@@ -618,7 +634,7 @@ response = client.messages.create(
 )
 ```
 
-> **Important Note**: As a transparent proxy service, GPT-Load completely preserves the native API formats and authentication methods of various AI services. You only need to replace the endpoint address and use the **Proxy Key** configured in the management interface for seamless migration.
+> **Important Note**: As a transparent proxy service, GPT-Load preserves native API formats and authentication by default; the Generic channel additionally provides OpenAI-compatible aliases for Fish-style audio. Clients only need to replace the endpoint and use the **Proxy Key** configured in the management interface.
 
 </details>
 

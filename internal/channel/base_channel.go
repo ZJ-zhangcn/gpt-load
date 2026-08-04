@@ -149,6 +149,12 @@ func (b *BaseChannel) GetStreamClientForKey(apiKey *models.APIKey) *http.Client 
 	return b.getClientForKey(b.streamConfig, b.StreamClient, apiKey)
 }
 
+// TransformRequest leaves the request unchanged for channels without a
+// provider-specific protocol adapter.
+func (b *BaseChannel) TransformRequest(_ *http.Request, bodyBytes []byte, _ *models.Group) ([]byte, error) {
+	return bodyBytes, nil
+}
+
 func (b *BaseChannel) getClientForKey(config httpclient.Config, fallback *http.Client, apiKey *models.APIKey) *http.Client {
 	if b.clientManager == nil {
 		return fallback

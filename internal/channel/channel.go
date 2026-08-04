@@ -33,6 +33,10 @@ type ChannelProxy interface {
 	// ModifyRequest allows the channel to add specific headers or modify the request
 	ModifyRequest(req *http.Request, apiKey *models.APIKey, group *models.Group)
 
+	// TransformRequest allows a channel to transform the upstream path, headers,
+	// and body while retaining the original client request for retries.
+	TransformRequest(req *http.Request, bodyBytes []byte, group *models.Group) ([]byte, error)
+
 	// IsStreamRequest checks if the request is for a streaming response,
 	IsStreamRequest(c *gin.Context, bodyBytes []byte) bool
 

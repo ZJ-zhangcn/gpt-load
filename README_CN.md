@@ -520,7 +520,7 @@ curl -X POST http://localhost:3001/proxy/anthropic/v1/messages \
 
 ### 6. Generic / Passthrough 接口调用示例
 
-`generic` 分组不会做 OpenAI/Fish 字段转换，会原样转发请求路径、请求体、关键请求头和响应。适合 Fish Audio 等非 OpenAI 原生接口。
+`generic` 分组默认原样转发 provider 原生请求；同时为 Fish-style TTS/ASR 上游提供 OpenAI 音频兼容别名：`/v1/audio/speech` 会转换到 `/v1/tts`，`/v1/audio/transcriptions` 会转换到 `/v1/asr`。原生 `/v1/tts`、`/v1/asr` 请求仍保持原样。
 
 假设创建了 `fish-audio` 分组，上游为 `https://api.fish.audio`，并在该分组中添加多个 Fish API Key：
 
@@ -537,9 +537,25 @@ curl -X POST http://localhost:3001/proxy/fish-audio/v1/asr \
   -H "Authorization: Bearer <proxy-key>" \
   -F "audio=@sample.wav" \
   -F "language=zh"
+
+# OpenAI 兼容 TTS：适合 NewAPI / OpenAI SDK
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/speech \
+  -H "Authorization: Bearer ***" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"s2-pro","input":"你好","voice":"<voice-id>","response_format":"mp3","speed":1.0}' \
+  -o output.mp3
+
+# OpenAI 兼容 ASR：file 会转换为 Fish 的 audio 字段
+curl -X POST http://localhost:3001/proxy/fish-audio/v1/audio/transcriptions \
+  -H "Authorization: Bearer ***" \
+  -F "file=@sample.wav" \
+  -F "model=s2-pro" \
+  -F "language=zh"
 ```
 
 `generic` 分组默认使用 `GET /model` 做低成本密钥校验；其他上游可在“测试路径”中改成自己的 GET 校验端点。分组内的多个 API Key 继续使用现有轮询、失败切换和代理节点绑定逻辑。
+
+NewAPI 接入时，将该分组作为 OpenAI 音频上游：Base URL 使用 `http://localhost:3001/proxy/fish-audio`（生产环境替换为实际 HTTPS 地址），上游 Key 使用 GPT-Load Proxy Key；Fish API Key 只保存在 GPT-Load 分组中。OpenAI `voice` 字段应填写 Fish 的 `reference_id`。
 
 ### 7. 支持的接口
 
@@ -618,7 +634,7 @@ response = client.messages.create(
 )
 ```
 
-> **重要提示**：作为透明代理服务，GPT-Load 完全保留各 AI 服务的原生 API 格式和认证方式，仅需要替换端点地址并使用在管理端配置的**代理密钥**即可无缝迁移。
+> **重要提示**：作为透明代理服务，GPT-Load 默认保留各 AI 服务的原生 API 格式和认证方式；Generic 分组额外提供 Fish-style 音频的 OpenAI 兼容别名。客户端只需替换端点地址并使用管理端配置的**代理密钥**。
 
 </details>
 

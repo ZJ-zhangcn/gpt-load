@@ -173,10 +173,17 @@ func (ps *ProxyServer) executeRequestWithRetry(
 		return
 	}
 
-	// Update request body if it was modified by redirection
-	if !bytes.Equal(finalBodyBytes, bodyBytes) {
-		req.Body = io.NopCloser(bytes.NewReader(finalBodyBytes))
-		req.ContentLength = int64(len(finalBodyBytes))
+	transformedBodyBytes, err := channelHandler.TransformRequest(req, finalBodyBytes, group)
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrBadRequest, err.Error()))
+		ps.logRequest(c, originalGroup, group, apiKey, startTime, http.StatusBadRequest, err, isStream, upstreamURL, channelHandler, bodyBytes, models.RequestTypeFinal)
+		return
+	}
+
+	// Update request body if it was modified by model redirection or protocol conversion.
+	if !bytes.Equal(transformedBodyBytes, bodyBytes) {
+		req.Body = io.NopCloser(bytes.NewReader(transformedBodyBytes))
+		req.ContentLength = int64(len(transformedBodyBytes))
 	}
 
 	channelHandler.ModifyRequest(req, apiKey, group)
