@@ -600,6 +600,10 @@ onMounted(() => {
                 {{ t("proxyPool.clearSelection") }}
               </n-button>
               <n-popconfirm
+                placement="top-end"
+                :width="340"
+                content-class="proxy-batch-delete-popconfirm"
+                content-style="max-width: calc(100vw - 24px); white-space: normal;"
                 :positive-text="t('proxyPool.batchDelete')"
                 :negative-text="t('common.cancel')"
                 :disabled="deleting"
@@ -877,7 +881,10 @@ onMounted(() => {
   display: grid;
   gap: 20px;
   max-width: 1160px;
+  min-width: 0;
+  width: 100%;
   margin: 0 auto;
+  overflow-x: hidden;
   padding-bottom: 8px;
 }
 
@@ -1702,6 +1709,20 @@ onMounted(() => {
   min-height: 160px;
 }
 
+:global(.proxy-batch-delete-popconfirm) {
+  max-width: calc(100vw - 24px);
+}
+
+:global(.proxy-batch-delete-popconfirm .n-popconfirm__body) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+:global(.proxy-batch-delete-popconfirm .n-popconfirm__action) {
+  flex-wrap: wrap;
+}
+
 @media (max-width: 980px) {
   .proxy-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1764,6 +1785,7 @@ onMounted(() => {
 
   .proxy-overview {
     gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .proxy-stat-card :deep(.n-card__content) {
@@ -1798,6 +1820,7 @@ onMounted(() => {
 
   .selection-actions {
     flex-wrap: wrap;
+    width: 100%;
   }
 
   .table-footer {

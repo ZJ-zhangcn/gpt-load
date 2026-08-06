@@ -184,6 +184,22 @@ test("filters proxy nodes by persisted check status", async () => {
   }
 });
 
+test("keeps the proxy pool usable on narrow screens", () => {
+  assert.match(source, /\.proxy-pool-page\s*\{[\s\S]*?width:\s*100%;/);
+  assert.match(source, /overflow-x:\s*hidden/);
+  assert.match(source, /content-class="proxy-batch-delete-popconfirm"/);
+  assert.match(source, /:width="340"/);
+  assert.match(source, /placement="top-end"/);
+  assert.match(source, /max-width:\s*calc\(100vw - 24px\)/);
+
+  const mobileStyles =
+    source.match(/@media \(max-width: 640px\) \{([\s\S]*?)\n\}\n<\/style>/)?.[1] ?? "";
+  assert.match(
+    mobileStyles,
+    /\.proxy-overview\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\);/
+  );
+});
+
 test("keeps global rebalance copy in every locale without Vue i18n links", async () => {
   for (const locale of ["en-US", "ja-JP", "zh-CN"]) {
     const localeSource = await readFile(
