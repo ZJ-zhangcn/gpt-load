@@ -1,4 +1,5 @@
 import type {
+  ProxyBatchDeleteResult,
   ProxyCheckResult,
   ProxyDeleteResult,
   ProxyGlobalRebalanceResult,
@@ -39,6 +40,11 @@ export const proxiesApi = {
 
   async delete(proxyId: number): Promise<ProxyDeleteResult> {
     const res = await http.delete(`/proxies/${proxyId}`);
+    return res.data;
+  },
+
+  async deleteMany(proxyIds: number[]): Promise<ProxyBatchDeleteResult> {
+    const res = await http.post("/proxies/delete", { proxy_ids: proxyIds });
     return res.data;
   },
 };

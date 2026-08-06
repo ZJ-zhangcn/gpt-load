@@ -54,6 +54,14 @@ type ProxyDeleteResult struct {
 	UnboundKeyCount int `json:"unbound_key_count"`
 }
 
+// ProxyBatchDeleteResult reports the outcome of an idempotent batch deletion.
+type ProxyBatchDeleteResult struct {
+	RequestedCount  int `json:"requested_count"`
+	DeletedCount    int `json:"deleted_count"`
+	IgnoredCount    int `json:"ignored_count"`
+	UnboundKeyCount int `json:"unbound_key_count"`
+}
+
 // ProxyNodeView is the administrator-facing proxy-node representation.
 type ProxyNodeView struct {
 	ID              uint    `json:"id"`
@@ -329,6 +337,71 @@ func (s *ProxyPoolService) Delete(proxyID uint) (*ProxyDeleteResult, error) {
 		if err := tx.Delete(&node).Error; err != nil {
 			return fmt.Errorf("delete proxy node: %w", err)
 		}
+		result.UnboundKeyCount = len(boundKeys)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := s.refreshProxyCache(cacheUpdates); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// DeleteMany physically deletes the selected proxy nodes in one transaction.
+// Existing key bindings are cleared before deletion and their derived cache
+// values are removed after commit. A missing node is treated as already gone
+// so repeated submissions remain safe and idempotent.
+func (s *ProxyPoolService) DeleteMany(proxyIDs []uint) (*ProxyBatchDeleteResult, error) {
+	proxyIDs = uniqueSortedIDs(proxyIDs)
+	if len(proxyIDs) == 0 {
+		return nil, errors.New("at least one proxy node must be selected")
+	}
+
+	result := &ProxyBatchDeleteResult{RequestedCount: len(proxyIDs)}
+	cacheUpdates := make(map[uint]string)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var nodes []models.ProxyNode
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id IN ?", proxyIDs).
+			Order("id ASC").
+			Find(&nodes).Error; err != nil {
+			return fmt.Errorf("load selected proxy nodes: %w", err)
+		}
+		result.IgnoredCount = len(proxyIDs) - len(nodes)
+		if len(nodes) == 0 {
+			return nil
+		}
+
+		existingIDs := make([]uint, 0, len(nodes))
+		for _, node := range nodes {
+			existingIDs = append(existingIDs, node.ID)
+		}
+
+		var boundKeys []models.APIKey
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("proxy_id IN ?", existingIDs).
+			Order("id ASC").
+			Find(&boundKeys).Error; err != nil {
+			return fmt.Errorf("load keys bound to selected proxy nodes: %w", err)
+		}
+		if len(boundKeys) > 0 {
+			if err := tx.Model(&models.APIKey{}).
+				Where("proxy_id IN ?", existingIDs).
+				Update("proxy_id", nil).Error; err != nil {
+				return fmt.Errorf("clear bound keys: %w", err)
+			}
+			for _, key := range boundKeys {
+				cacheUpdates[key.ID] = ""
+			}
+		}
+
+		deleteResult := tx.Where("id IN ?", existingIDs).Delete(&models.ProxyNode{})
+		if deleteResult.Error != nil {
+			return fmt.Errorf("delete proxy nodes: %w", deleteResult.Error)
+		}
+		result.DeletedCount = int(deleteResult.RowsAffected)
 		result.UnboundKeyCount = len(boundKeys)
 		return nil
 	})

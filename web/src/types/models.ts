@@ -177,6 +177,13 @@ export interface ProxyDeleteResult {
   unbound_key_count: number;
 }
 
+export interface ProxyBatchDeleteResult {
+  requested_count: number;
+  deleted_count: number;
+  ignored_count: number;
+  unbound_key_count: number;
+}
+
 export interface TaskInfo {
   task_type: TaskType;
   is_running: boolean;

@@ -313,3 +313,76 @@ func TestProxyPoolRebalanceAllRequiresHealthyProxy(t *testing.T) {
 		t.Fatalf("failed global rebalance changed key: %#v", unchanged.ProxyID)
 	}
 }
+
+func TestProxyPoolDeleteManyIsIdempotentAndKeepsSelectedRuntimeProxy(t *testing.T) {
+	service, db, provider, encryptionSvc, keyStore := newProxyPoolTestService(t)
+	group := createTestGroup(t, db, "batch-delete-group")
+	createTestKeys(t, db, encryptionSvc, group.ID, 2)
+	if err := provider.LoadKeysFromDB(); err != nil {
+		t.Fatalf("load keys into cache: %v", err)
+	}
+
+	if _, err := service.Import("http://proxy-a.example:8080\nhttp://proxy-b.example:8080"); err != nil {
+		t.Fatalf("import proxies: %v", err)
+	}
+	var nodes []models.ProxyNode
+	if err := db.Order("id ASC").Find(&nodes).Error; err != nil {
+		t.Fatalf("load proxy nodes: %v", err)
+	}
+	if _, err := service.Rebalance(group.ID, []uint{nodes[0].ID, nodes[1].ID}); err != nil {
+		t.Fatalf("rebalance proxies: %v", err)
+	}
+
+	selected, err := provider.SelectKey(group.ID)
+	if err != nil {
+		t.Fatalf("select key before deletion: %v", err)
+	}
+	if selected.ProxyURL == "" {
+		t.Fatal("selected key did not receive a runtime proxy URL")
+	}
+	runtimeProxyURL := selected.ProxyURL
+
+	result, err := service.DeleteMany([]uint{nodes[0].ID, nodes[1].ID, nodes[0].ID, 999999})
+	if err != nil {
+		t.Fatalf("delete proxy nodes: %v", err)
+	}
+	if result.RequestedCount != 3 || result.DeletedCount != 2 || result.IgnoredCount != 1 || result.UnboundKeyCount != 2 {
+		t.Fatalf("unexpected batch delete result: %+v", result)
+	}
+	if selected.ProxyURL != runtimeProxyURL {
+		t.Fatalf("selected runtime proxy changed after deletion: %q", selected.ProxyURL)
+	}
+
+	var remainingNodes []models.ProxyNode
+	if err := db.Find(&remainingNodes).Error; err != nil {
+		t.Fatalf("load proxy nodes after batch deletion: %v", err)
+	}
+	if len(remainingNodes) != 0 {
+		t.Fatalf("expected all proxy nodes to be physically deleted, got %d", len(remainingNodes))
+	}
+
+	var remainingKeys []models.APIKey
+	if err := db.Where("group_id = ?", group.ID).Order("id ASC").Find(&remainingKeys).Error; err != nil {
+		t.Fatalf("load keys after batch deletion: %v", err)
+	}
+	for _, key := range remainingKeys {
+		if key.ProxyID != nil {
+			t.Fatalf("key %d still references a deleted proxy: %#v", key.ID, key.ProxyID)
+		}
+		cached, cacheErr := keyStore.HGetAll(fmt.Sprintf("key:%d", key.ID))
+		if cacheErr != nil {
+			t.Fatalf("read key %d cache after batch deletion: %v", key.ID, cacheErr)
+		}
+		if cached["proxy_url"] != "" {
+			t.Fatalf("key %d retained a stale proxy cache: %q", key.ID, cached["proxy_url"])
+		}
+	}
+
+	second, err := service.DeleteMany([]uint{nodes[0].ID, nodes[1].ID})
+	if err != nil {
+		t.Fatalf("repeat batch deletion: %v", err)
+	}
+	if second.DeletedCount != 0 || second.IgnoredCount != 2 {
+		t.Fatalf("repeat deletion was not idempotent: %+v", second)
+	}
+}

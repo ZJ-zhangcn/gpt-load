@@ -683,6 +683,16 @@ export default {
     loadFailed: "加载代理节点失败，请重试。",
     deleteConfirm: "删除后，所有绑定此节点的 Key 会清空专属代理并回退到分组或环境代理。确认删除？",
     deleteSuccess: "节点已删除，已清空 {count} 个 Key 的专属代理",
+    selectPage: "选择当前页",
+    selectAllFiltered: "选择全部 {count} 个筛选结果",
+    clearSelection: "清除选择",
+    selectedCount: "已选 {count} 个",
+    batchDelete: "批量永久删除",
+    batchDeleteConfirm:
+      "将永久删除已选的 {count} 个节点，并清空其绑定 Key 的专属代理。此操作不可恢复，确认继续？",
+    batchDeleteSuccess:
+      "已永久删除 {deleted} 个节点，忽略 {ignored} 个已不存在节点，清空 {unbound} 个 Key 的专属代理",
+    batchDeleteFailed: "批量删除失败，请重试",
     rebalanceTitle: "均衡分配代理",
     rebalanceDescription: "将已选节点按稳定顺序均衡分配给分组 {group} 的所有 Key。",
     emptyForRebalance: "代理池为空，请先导入节点。",

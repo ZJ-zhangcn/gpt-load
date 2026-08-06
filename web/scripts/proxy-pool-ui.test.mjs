@@ -148,6 +148,20 @@ test("exposes a one-click healthy-node rebalance for every key group", () => {
   assert.match(modelsSource, /ProxyGlobalRebalanceResult/);
 });
 
+test("supports page selection and frozen all-filtered batch deletion", () => {
+  assert.match(source, /selectedProxyIds/);
+  assert.match(source, /selectAllFiltered/);
+  assert.match(source, /togglePageSelection/);
+  assert.match(source, /proxiesApi\.deleteMany/);
+  assert.match(source, /proxyPool\.selectAllFiltered/);
+  assert.match(source, /proxyPool\.batchDelete/);
+  assert.match(source, /proxyPool\.batchDeleteConfirm/);
+  assert.match(source, /proxyPool\.selectedCount/);
+  assert.match(proxiesApiSource, /async deleteMany\(proxyIds: number\[\]/);
+  assert.match(proxiesApiSource, /\/proxies\/delete/);
+  assert.match(modelsSource, /ProxyBatchDeleteResult/);
+});
+
 test("keeps global rebalance copy in every locale without Vue i18n links", async () => {
   for (const locale of ["en-US", "ja-JP", "zh-CN"]) {
     const localeSource = await readFile(

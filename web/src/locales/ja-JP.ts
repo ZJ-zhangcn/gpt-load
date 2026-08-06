@@ -703,6 +703,16 @@ export default {
     deleteConfirm:
       "削除すると、このノードに紐づくすべてのキーの専用プロキシがクリアされ、グループまたは環境のプロキシへフォールバックします。削除しますか？",
     deleteSuccess: "ノードを削除し、{count} 個のキーの専用プロキシをクリアしました",
+    selectPage: "現在のページを選択",
+    selectAllFiltered: "フィルター結果 {count} 件をすべて選択",
+    clearSelection: "選択を解除",
+    selectedCount: "{count} 件を選択中",
+    batchDelete: "選択項目を完全削除",
+    batchDeleteConfirm:
+      "選択した {count} 件のノードを完全に削除し、関連キーの専用プロキシも消去します。この操作は元に戻せません。続行しますか？",
+    batchDeleteSuccess:
+      "{deleted} 件のノードを完全削除し、既に存在しない {ignored} 件を無視、{unbound} 個のキーの専用プロキシを消去しました",
+    batchDeleteFailed: "一括削除に失敗しました。再試行してください。",
     rebalanceTitle: "プロキシを均等に割り当て",
     rebalanceDescription:
       "選択したノードをグループ {group} のすべてのキーへ安定した順序で均等に割り当てます。",

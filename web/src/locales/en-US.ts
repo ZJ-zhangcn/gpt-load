@@ -702,6 +702,16 @@ export default {
     deleteConfirm:
       "Deleting this node clears the dedicated proxy from every bound key, which then falls back to its group or environment proxy. Delete it?",
     deleteSuccess: "Node deleted; cleared dedicated proxy from {count} keys",
+    selectPage: "Select current page",
+    selectAllFiltered: "Select all {count} filtered results",
+    clearSelection: "Clear selection",
+    selectedCount: "{count} selected",
+    batchDelete: "Permanently delete selected",
+    batchDeleteConfirm:
+      "This permanently deletes {count} selected nodes and clears their dedicated proxy from bound keys. This cannot be undone. Continue?",
+    batchDeleteSuccess:
+      "Permanently deleted {deleted} nodes, ignored {ignored} already missing nodes, and cleared dedicated proxy from {unbound} keys",
+    batchDeleteFailed: "Batch deletion failed. Try again.",
     rebalanceTitle: "Assign proxies evenly",
     rebalanceDescription:
       "Assign selected nodes evenly and deterministically to every key in group {group}.",

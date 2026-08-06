@@ -38,6 +38,8 @@ const importing = ref(false);
 const checking = ref(false);
 const checkingIds = ref(new Set<number>());
 const deletingId = ref<number | null>(null);
+const deleting = ref(false);
+const selectedProxyIds = ref(new Set<number>());
 const loadFailed = ref(false);
 const searchText = ref("");
 const protocolFilter = ref("all");
@@ -197,8 +199,26 @@ const visibleRows = computed(() => {
   });
 });
 
+const selectedCount = computed(() => selectedProxyIds.value.size);
+const allVisibleSelected = computed(
+  () =>
+    visibleRows.value.length > 0 &&
+    visibleRows.value.every(row => selectedProxyIds.value.has(row.id))
+);
+const someVisibleSelected = computed(
+  () =>
+    visibleRows.value.some(row => selectedProxyIds.value.has(row.id)) &&
+    !allVisibleSelected.value
+);
+const allFilteredSelected = computed(
+  () =>
+    filteredProxies.value.length > 0 &&
+    filteredProxies.value.every(proxy => selectedProxyIds.value.has(proxy.id))
+);
+
 watch([searchText, protocolFilter, filterMode], () => {
   currentPage.value = 1;
+  clearSelection();
 });
 
 watch(pageCount, count => {
@@ -212,6 +232,7 @@ async function loadProxies() {
   loadFailed.value = false;
   try {
     proxies.value = await proxiesApi.list();
+    clearSelection();
   } catch (_error) {
     loadFailed.value = true;
   } finally {
@@ -274,6 +295,44 @@ function mergeCheckedNodes(nodes: ProxyNode[]) {
   proxies.value = proxies.value.map(node => checkedById.get(node.id) ?? node);
 }
 
+function clearSelection() {
+  selectedProxyIds.value = new Set<number>();
+}
+
+function toggleProxySelection(proxyId: number, checked: boolean) {
+  const next = new Set(selectedProxyIds.value);
+  if (checked) {
+    next.add(proxyId);
+  } else {
+    next.delete(proxyId);
+  }
+  selectedProxyIds.value = next;
+}
+
+function togglePageSelection(checked: boolean) {
+  const next = new Set(selectedProxyIds.value);
+  for (const row of visibleRows.value) {
+    if (checked) {
+      next.add(row.id);
+    } else {
+      next.delete(row.id);
+    }
+  }
+  selectedProxyIds.value = next;
+}
+
+function selectAllFiltered() {
+  selectedProxyIds.value = new Set(filteredProxies.value.map(proxy => proxy.id));
+}
+
+function onPageSelectionChange(event: Event) {
+  togglePageSelection((event.target as HTMLInputElement).checked);
+}
+
+function onProxySelectionChange(proxyId: number, event: Event) {
+  toggleProxySelection(proxyId, (event.target as HTMLInputElement).checked);
+}
+
 async function importProxies() {
   if (!proxiesText.value.trim() || importing.value) {
     return;
@@ -293,17 +352,47 @@ async function importProxies() {
 }
 
 async function deleteProxy(proxy: ProxyNode) {
-  if (deletingId.value !== null) {
+  if (deleting.value) {
     return;
   }
 
+  deleting.value = true;
   deletingId.value = proxy.id;
   try {
     const result = await proxiesApi.delete(proxy.id);
     proxies.value = proxies.value.filter(item => item.id !== proxy.id);
+    toggleProxySelection(proxy.id, false);
+    await loadProxies();
     window.$message.success(t("proxyPool.deleteSuccess", { count: result.unbound_key_count }));
   } finally {
     deletingId.value = null;
+    deleting.value = false;
+  }
+}
+
+async function deleteSelectedProxies() {
+  const targetIds = Array.from(selectedProxyIds.value);
+  if (targetIds.length === 0 || deleting.value) {
+    return;
+  }
+
+  deleting.value = true;
+  try {
+    const result = await proxiesApi.deleteMany(targetIds);
+    const targetSet = new Set(targetIds);
+    proxies.value = proxies.value.filter(proxy => !targetSet.has(proxy.id));
+    await loadProxies();
+    window.$message.success(
+      t("proxyPool.batchDeleteSuccess", {
+        deleted: result.deleted_count,
+        ignored: result.ignored_count,
+        unbound: result.unbound_key_count,
+      })
+    );
+  } catch (_error) {
+    window.$message.error(t("proxyPool.batchDeleteFailed"));
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -461,6 +550,57 @@ onMounted(() => {
           </n-button>
         </div>
 
+        <div v-if="filteredProxies.length > 0" class="selection-toolbar">
+          <div class="selection-leading">
+            <label class="selection-label">
+              <input
+                type="checkbox"
+                :checked="allVisibleSelected"
+                :indeterminate="someVisibleSelected"
+                :aria-label="t('proxyPool.selectPage')"
+                @change="onPageSelectionChange"
+              />
+              <span>{{ t("proxyPool.selectPage") }}</span>
+            </label>
+            <span v-if="selectedCount > 0" class="selection-count">
+              {{ t("proxyPool.selectedCount", { count: selectedCount }) }}
+            </span>
+          </div>
+          <div class="selection-actions">
+            <n-button
+              v-if="!allFilteredSelected"
+              text
+              type="primary"
+              size="small"
+              :disabled="deleting || checking"
+              @click="selectAllFiltered"
+            >
+              {{ t("proxyPool.selectAllFiltered", { count: filteredProxies.length }) }}
+            </n-button>
+            <template v-if="selectedCount > 0">
+              <n-button text size="small" :disabled="deleting" @click="clearSelection">
+                {{ t("proxyPool.clearSelection") }}
+              </n-button>
+              <n-popconfirm
+                :positive-text="t('proxyPool.batchDelete')"
+                :negative-text="t('common.cancel')"
+                :disabled="deleting"
+                @positive-click="deleteSelectedProxies"
+              >
+                <template #trigger>
+                  <n-button type="error" size="small" :loading="deleting" :disabled="checking">
+                    <template #icon>
+                      <n-icon><trash-outline /></n-icon>
+                    </template>
+                    {{ t("proxyPool.batchDelete") }}
+                  </n-button>
+                </template>
+                {{ t("proxyPool.batchDeleteConfirm", { count: selectedCount }) }}
+              </n-popconfirm>
+            </template>
+          </div>
+        </div>
+
         <n-spin :show="loading">
           <div v-if="loadFailed" class="state-block" role="alert">
             <n-icon :size="28"><alert-circle-outline /></n-icon>
@@ -497,6 +637,15 @@ onMounted(() => {
                 <table class="proxy-table">
                   <thead>
                     <tr>
+                      <th class="selection-column">
+                        <input
+                          type="checkbox"
+                          :checked="allVisibleSelected"
+                          :indeterminate="someVisibleSelected"
+                          :aria-label="t('proxyPool.selectPage')"
+                          @change="onPageSelectionChange"
+                        />
+                      </th>
                       <th>{{ t("proxyPool.endpoint") }}</th>
                       <th>{{ t("proxyPool.protocol") }}</th>
                       <th>{{ t("proxyPool.createdAt") }}</th>
@@ -507,6 +656,14 @@ onMounted(() => {
                   </thead>
                   <tbody>
                     <tr v-for="row in visibleRows" :key="row.id">
+                      <td class="selection-column">
+                        <input
+                          type="checkbox"
+                          :checked="selectedProxyIds.has(row.id)"
+                          :aria-label="row.host"
+                          @change="onProxySelectionChange(row.id, $event)"
+                        />
+                      </td>
                       <td>
                         <div class="endpoint-cell">
                           <span class="endpoint-icon">
@@ -1047,6 +1204,54 @@ onMounted(() => {
   gap: 9px;
 }
 
+.selection-toolbar {
+  align-items: center;
+  background: var(--primary-color-suppl);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.selection-leading,
+.selection-actions,
+.selection-label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.selection-leading,
+.selection-actions {
+  min-width: 0;
+}
+
+.selection-label {
+  color: var(--text-color-2, var(--text-secondary));
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.selection-label input,
+.selection-column input {
+  accent-color: var(--primary-color);
+  cursor: pointer;
+  height: 15px;
+  margin: 0;
+  width: 15px;
+}
+
+.selection-count {
+  border-left: 1px solid rgba(102, 126, 234, 0.2);
+  color: var(--primary-color);
+  font-size: 12px;
+  padding-left: 10px;
+  white-space: nowrap;
+}
+
 .search-input {
   flex: 1 1 260px;
   min-width: 170px;
@@ -1107,6 +1312,13 @@ onMounted(() => {
   padding: 0 9px 10px;
   text-align: left;
   white-space: nowrap;
+}
+
+.selection-column {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  text-align: center !important;
+  width: 36px;
 }
 
 .proxy-table td {
@@ -1558,6 +1770,15 @@ onMounted(() => {
     align-items: stretch;
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .selection-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selection-actions {
+    flex-wrap: wrap;
   }
 
   .table-footer {

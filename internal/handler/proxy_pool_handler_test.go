@@ -131,6 +131,46 @@ func TestProxyPoolHandlersRejectInvalidImport(t *testing.T) {
 	}
 }
 
+func TestProxyPoolHandlerBatchDelete(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	server, db := newProxyPoolHandlerTestServer(t)
+	if _, err := server.ProxyPoolService.Import("http://proxy-a.example:8080\nhttp://proxy-b.example:8080"); err != nil {
+		t.Fatalf("import proxies: %v", err)
+	}
+	var nodes []models.ProxyNode
+	if err := db.Order("id ASC").Find(&nodes).Error; err != nil {
+		t.Fatalf("load proxy nodes: %v", err)
+	}
+
+	router := gin.New()
+	router.POST("/api/proxies/delete", server.DeleteProxies)
+	body, _ := json.Marshal(map[string]any{
+		"proxy_ids": []uint{nodes[0].ID, nodes[1].ID, 999999},
+	})
+	request := httptest.NewRequest(http.MethodPost, "/api/proxies/delete", bytes.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("batch delete status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	var payload struct {
+		Data struct {
+			RequestedCount  int `json:"requested_count"`
+			DeletedCount    int `json:"deleted_count"`
+			IgnoredCount    int `json:"ignored_count"`
+			UnboundKeyCount int `json:"unbound_key_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode batch delete response: %v", err)
+	}
+	if payload.Data.RequestedCount != 3 || payload.Data.DeletedCount != 2 || payload.Data.IgnoredCount != 1 {
+		t.Fatalf("unexpected batch delete payload: %+v", payload.Data)
+	}
+}
+
 func TestProxyPoolHandlersCheckEmptyPool(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	server, _ := newProxyPoolHandlerTestServer(t)

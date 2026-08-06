@@ -23,6 +23,10 @@ type proxyCheckRequest struct {
 	ProxyIDs []uint `json:"proxy_ids"`
 }
 
+type proxyBatchDeleteRequest struct {
+	ProxyIDs []uint `json:"proxy_ids" binding:"required,min=1"`
+}
+
 // ListProxies returns the current proxy node pool for the authenticated management UI.
 func (s *Server) ListProxies(c *gin.Context) {
 	proxies, err := s.ProxyPoolService.List()
@@ -99,6 +103,21 @@ func (s *Server) DeleteProxy(c *gin.Context) {
 	result, err := s.ProxyPoolService.Delete(uint(proxyID))
 	if err != nil {
 		response.Error(c, app_errors.ParseDBError(err))
+		return
+	}
+	response.Success(c, result)
+}
+
+// DeleteProxies physically deletes selected pool nodes in one transaction.
+func (s *Server) DeleteProxies(c *gin.Context) {
+	var req proxyBatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, app_errors.ErrInvalidJSON)
+		return
+	}
+	result, err := s.ProxyPoolService.DeleteMany(req.ProxyIDs)
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrBadRequest, err.Error()))
 		return
 	}
 	response.Success(c, result)
