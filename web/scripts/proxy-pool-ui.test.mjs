@@ -89,19 +89,24 @@ test("uses the proxy pool brand in the menu shell and navigation item", () => {
   assert.match(navSource, /nav-pool-mark/);
 });
 
-test("aligns the workspace columns and gives the proxy page a logo", () => {
+test("keeps the workspace columns and lets the right stack grow with its content", () => {
   assert.match(source, /class="page-title-group"/);
   assert.match(source, /class="proxy-page-logo"/);
-  assert.match(source, /align-self:\s*stretch/);
+  assert.match(source, /align-self:\s*start/);
   assert.match(source, /grid-template-columns:\s*minmax\(0, 1fr\) 326px/);
+  assert.match(source, /overflow:\s*visible/);
+  assert.match(source, /flex:\s*0 0 auto/);
+  assert.match(source, /max-height:\s*220px/);
 });
 
-test("keeps the right-side operations as one continuous aligned stack", () => {
+test("keeps the right-side operations as one continuous content-sized stack", () => {
   const sideStyle = source.match(/\.proxy-side-column\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
   assert.match(source, /class="proxy-side-column"/);
   assert.match(sideStyle, /display:\s*flex/);
   assert.match(sideStyle, /flex-direction:\s*column/);
   assert.match(sideStyle, /gap:\s*0/);
+  assert.match(sideStyle, /align-self:\s*start/);
+  assert.match(sideStyle, /overflow:\s*visible/);
   assert.match(
     source,
     /border-radius:\s*var\(--border-radius-lg\)\s+var\(--border-radius-lg\)\s+0\s+0/
@@ -110,6 +115,9 @@ test("keeps the right-side operations as one continuous aligned stack", () => {
     source,
     /border-radius:\s*0\s+0\s+var\(--border-radius-lg\)\s+var\(--border-radius-lg\)/
   );
+  assert.match(source, /\.health-queue-panel :deep\(\.n-card__content\)/);
+  assert.match(source, /align-content:\s*normal/);
+  assert.match(source, /min-height:\s*auto/);
 });
 
 test("renders an explicit pool wordmark instead of an ambiguous icon-only logo", () => {

@@ -1256,14 +1256,14 @@ onMounted(() => {
 }
 
 .proxy-side-column {
-  align-self: stretch;
+  align-self: start;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   display: flex;
   flex-direction: column;
   gap: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .proxy-side-column > .quick-import-panel,
@@ -1280,13 +1280,13 @@ onMounted(() => {
 .proxy-side-column > .health-queue-panel {
   border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
   border-top: 1px solid var(--border-color);
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: auto;
 }
 
 .health-queue-panel :deep(.n-card__content) {
-  align-content: space-between;
-  min-height: 100%;
+  align-content: normal;
+  min-height: 0;
 }
 
 .health-summary {
@@ -1366,6 +1366,9 @@ onMounted(() => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 1.65;
+  max-height: 220px;
+  overflow-y: auto;
+  resize: vertical;
 }
 
 .format-hint {
