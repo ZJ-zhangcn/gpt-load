@@ -30,6 +30,8 @@ import {
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
+type ProxyStatusFilter = "all" | ProxyCheckStatus;
+
 const { t } = useI18n();
 const proxies = ref<ProxyNode[]>([]);
 const proxiesText = ref("");
@@ -43,6 +45,7 @@ const selectedProxyIds = ref(new Set<number>());
 const loadFailed = ref(false);
 const searchText = ref("");
 const protocolFilter = ref("all");
+const statusFilter = ref<ProxyStatusFilter>("all");
 const filterMode = ref<"all" | "imported" | "pending">("all");
 const pageSize = ref(8);
 const currentPage = ref(1);
@@ -123,6 +126,14 @@ function checkStatusLabel(status: ProxyCheckStatus) {
   return t(`proxyPool.checkStatus.${status}`);
 }
 
+const statusOptions = computed(() => [
+  { label: t("proxyPool.allStatuses"), value: "all" as const },
+  ...(["unchecked", "up", "down"] as ProxyCheckStatus[]).map(status => ({
+    label: checkStatusLabel(status),
+    value: status,
+  })),
+]);
+
 const overviewStats = computed(() => [
   {
     key: "total",
@@ -169,12 +180,13 @@ const filteredProxies = computed(() => {
       parsed.host.toLowerCase().includes(query);
     const matchesProtocol =
       protocolFilter.value === "all" || parsed.protocol === protocolFilter.value;
+    const matchesStatus = statusFilter.value === "all" || proxy.check_status === statusFilter.value;
 
     const matchesMode =
       filterMode.value === "all" ||
       filterMode.value === "imported" ||
       (filterMode.value === "pending" && proxy.check_status === "unchecked");
-    return matchesSearch && matchesProtocol && matchesMode;
+    return matchesSearch && matchesProtocol && matchesStatus && matchesMode;
   });
 });
 
@@ -207,8 +219,7 @@ const allVisibleSelected = computed(
 );
 const someVisibleSelected = computed(
   () =>
-    visibleRows.value.some(row => selectedProxyIds.value.has(row.id)) &&
-    !allVisibleSelected.value
+    visibleRows.value.some(row => selectedProxyIds.value.has(row.id)) && !allVisibleSelected.value
 );
 const allFilteredSelected = computed(
   () =>
@@ -216,7 +227,7 @@ const allFilteredSelected = computed(
     filteredProxies.value.every(proxy => selectedProxyIds.value.has(proxy.id))
 );
 
-watch([searchText, protocolFilter, filterMode], () => {
+watch([searchText, protocolFilter, filterMode, statusFilter], () => {
   currentPage.value = 1;
   clearSelection();
 });
@@ -399,6 +410,7 @@ async function deleteSelectedProxies() {
 function resetFilters() {
   searchText.value = "";
   protocolFilter.value = "all";
+  statusFilter.value = "all";
   filterMode.value = "all";
 }
 
@@ -541,6 +553,12 @@ onMounted(() => {
             v-model:value="protocolFilter"
             :options="protocolOptions"
             class="protocol-select"
+          />
+          <n-select
+            v-model:value="statusFilter"
+            :options="statusOptions"
+            :aria-label="t('proxyPool.nodeStatus')"
+            class="status-select"
           />
           <n-button quaternary @click="resetFilters">
             <template #icon>
@@ -1257,7 +1275,8 @@ onMounted(() => {
   min-width: 170px;
 }
 
-.protocol-select {
+.protocol-select,
+.status-select {
   flex: 0 0 150px;
 }
 
@@ -1791,7 +1810,8 @@ onMounted(() => {
   }
 
   .search-input,
-  .protocol-select {
+  .protocol-select,
+  .status-select {
     width: 100%;
   }
 

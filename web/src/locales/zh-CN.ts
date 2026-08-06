@@ -639,6 +639,8 @@ export default {
     pendingTab: "待检测",
     searchPlaceholder: "搜索节点名称或地址",
     allProtocols: "全部协议",
+    nodeStatus: "节点状态",
+    allStatuses: "全部状态",
     resetFilters: "重置筛选",
     endpoint: "节点地址",
     protocol: "协议",

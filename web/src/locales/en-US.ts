@@ -657,6 +657,8 @@ export default {
     pendingTab: "Pending check",
     searchPlaceholder: "Search node name or address",
     allProtocols: "All protocols",
+    nodeStatus: "Node status",
+    allStatuses: "All statuses",
     resetFilters: "Reset filters",
     endpoint: "Node address",
     protocol: "Protocol",

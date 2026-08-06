@@ -162,6 +162,28 @@ test("supports page selection and frozen all-filtered batch deletion", () => {
   assert.match(modelsSource, /ProxyBatchDeleteResult/);
 });
 
+test("filters proxy nodes by persisted check status", async () => {
+  assert.match(source, /const statusFilter = ref<.*>\("all"\)/);
+  assert.match(source, /const statusOptions = computed\(/);
+  assert.match(source, /:options="statusOptions"/);
+  assert.match(source, /statusFilter\.value === "all"/);
+  assert.match(source, /proxy\.check_status === statusFilter\.value/);
+  assert.match(source, /\[searchText, protocolFilter, filterMode, statusFilter\]/);
+  assert.match(source, /statusFilter\.value = "all"/);
+
+  for (const locale of ["en-US", "ja-JP", "zh-CN"]) {
+    const localeSource = await readFile(
+      new URL(`../src/locales/${locale}.ts`, import.meta.url),
+      "utf8"
+    );
+    const proxyPoolStart = localeSource.lastIndexOf("  proxyPool: {");
+    const proxyPoolEnd = localeSource.indexOf("\n  },", proxyPoolStart);
+    const proxyPoolMessages = localeSource.slice(proxyPoolStart, proxyPoolEnd);
+    assert.match(proxyPoolMessages, /allStatuses:/);
+    assert.match(proxyPoolMessages, /checkStatus:\s*\{/);
+  }
+});
+
 test("keeps global rebalance copy in every locale without Vue i18n links", async () => {
   for (const locale of ["en-US", "ja-JP", "zh-CN"]) {
     const localeSource = await readFile(

@@ -658,6 +658,8 @@ export default {
     pendingTab: "確認待ち",
     searchPlaceholder: "ノード名またはアドレスを検索",
     allProtocols: "すべてのプロトコル",
+    nodeStatus: "ノードステータス",
+    allStatuses: "すべてのステータス",
     resetFilters: "絞り込みをリセット",
     endpoint: "ノードアドレス",
     protocol: "プロトコル",
